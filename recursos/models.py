@@ -16,6 +16,13 @@ class Material(models.Model):
     cantidad_por_unidad_venta = models.DecimalField(max_digits=10, decimal_places=4, default=1)
     precio_unidad_venta = models.DecimalField(max_digits=12, decimal_places=4)
     moneda = models.CharField(max_length=3, choices=MONEDA_CHOICES, default='ARS')
+    
+    def precio_por_unidad_analisis(self):
+        # Asegúrate de manejar la división por cero
+        if self.cantidad_por_unidad_venta is not None and self.cantidad_por_unidad_venta != 0:
+            # Retorna un Decimal para mantener la precisión
+            return self.precio_unidad_venta / self.cantidad_por_unidad_venta
+        return 0 # O None, o levantar un error, según la lógica deseada
 
     class Meta:
         verbose_name = "Material"
