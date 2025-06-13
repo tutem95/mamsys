@@ -1,65 +1,103 @@
 from django.contrib import admin
-from .models import Material, ManoDeObra, Subcontrato # Importa todos los modelos de recursos
+from django.urls import path, reverse
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
+from .models import Material, ManoDeObra, Subcontrato
+from decimal import Decimal, InvalidOperation
+from django.contrib import messages
+from django.utils.translation import gettext_lazy as _
+
 
 @admin.register(Material)
 class MaterialAdmin(admin.ModelAdmin):
-    # Campos que se mostrarán como columnas en la tabla principal
     list_display = (
-        'nombre',
-        'proveedor',
-        'tipo',
-        'categoria',
-        'unidad_de_venta',
-        'cantidad_por_unidad_venta',
-        'precio_unidad_venta',
-        'get_precio_por_unidad_analisis_display', # Usamos este método para el display
-        'moneda',
-        'obtener_precio_en_ars_o_usd' # Mostrar precio convertido, si lo deseamos (más adelante)
+        'nombre', 'proveedor', 'tipo', 'categoria',
+        'unidad_de_venta', 'mostrar_cantidad', 'mostrar_precio',
+        'moneda', 'mostrar_precio_analisis'
     )
+    list_filter = ('proveedor', 'tipo', 'categoria', 'unidad_de_venta', 'moneda')
+    search_fields = ('nombre', 'proveedor__nombre', 'categoria__nombre', 'tipo__nombre')
+    actions = ['actualizar_precios_materiales']
 
-    # Campos por los que se puede filtrar en el panel lateral derecho
-    list_filter = (
-        'proveedor',
-        'tipo',
-        'categoria',
-        'unidad_de_venta', # También podemos filtrar por unidad de venta
-        'moneda',
-    )
+    def mostrar_cantidad(self, obj):
+        if obj.cantidad_por_unidad_venta is None:
+            return "-"
+        return f"{obj.cantidad_por_unidad_venta:,.2f}"
+    mostrar_cantidad.short_description = "Cant. x Unidad Venta"
 
-    # Campos por los que se puede buscar en la barra de búsqueda superior
-    search_fields = (
-        'nombre',
-        'proveedor__nombre', # Permite buscar por el nombre del proveedor relacionado
-        'tipo__nombre',      # Permite buscar por el nombre del tipo de material
-        'categoria__nombre', # Permite buscar por el nombre de la categoría de material
-    )
+    def mostrar_precio(self, obj):
+        if obj.precio_unidad_venta is None:
+            return "-"
+        return f"{obj.precio_unidad_venta:,.2f}"
+    mostrar_precio.short_description = "Precio Unidad Venta"
 
-    # Campos que se convierten en enlaces a la página de edición del objeto relacionado
-    raw_id_fields = ('proveedor', 'tipo', 'categoria', 'unidad_de_venta',) # Útil para muchos objetos, muestra ID en vez de select largo
+    def mostrar_precio_analisis(self, obj):
+        try:
+            return f"{obj.precio_por_unidad_analisis():,.2f}"
+        except:
+            return "-"
+    mostrar_precio_analisis.short_description = "Precio x Unidad Análisis"
 
-    # Opcional: Campo para ordenar por defecto en la vista de lista
-    ordering = ('nombre',)
+    def actualizar_precios_materiales(self, request, queryset):
+        changelist_url = reverse('admin:%s_%s_changelist' % (self.model._meta.app_label, self.model._meta.model_name))
 
-    # Ahora, necesitamos definir el método para el display del precio de unidad de análisis
-    # Haremos una pequeña modificación al modelo para asegurar que el display sea consistente
-    # (Esto lo haremos en el modelo, no aquí, pero lo referenciamos)
+        if 'apply' in request.POST:
+            porcentaje_str = request.POST.get('porcentaje', '').replace(',', '.')
 
-    def get_precio_por_unidad_analisis_display(self, obj):
-        # Formatea el precio para que se vea más legible en la tabla
-        if obj.cantidad_por_unidad_venta and obj.cantidad_por_unidad_venta != 0:
-            return f"{obj.precio_por_unidad_analisis():,.4f} {obj.moneda}/{obj.unidad_de_venta.nombre}"
-        return "N/A"
-    get_precio_por_unidad_analisis_display.short_description = "Precio U. Análisis" # Nombre de la columna
-    get_precio_por_unidad_analisis_display.admin_order_field = 'precio_unidad_venta' # Permite ordenar por este campo (usando el precio original)
+            # Usar getlist para obtener todos los IDs seleccionados
+            selected_ids = request.POST.getlist('_selected_action')
 
-    def obtener_precio_en_ars_o_usd(self, obj):
-        # Aquí irá la lógica para mostrar el precio en ARS o USD.
-        # Por ahora, solo es un placeholder.
-        # Este campo se completará cuando tengamos el modelo TipoDeCambio.
-        return "N/A (Lógica de conversión pendiente)"
-    obtener_precio_en_ars_o_usd.short_description = "Precio Conv."
+            try:
+                selected_ids = [int(pk) for pk in selected_ids]
+            except ValueError:
+                self.message_user(request, _("Error: Identificadores de materiales no válidos."), level=messages.ERROR)
+                return HttpResponseRedirect(changelist_url)
+
+            queryset = self.get_queryset(request).filter(pk__in=selected_ids)
+
+            if not queryset.exists():
+                self.message_user(request, _("Ningún material válido seleccionado para actualizar."), level=messages.WARNING)
+                return HttpResponseRedirect(changelist_url)
+
+            try:
+                porcentaje = Decimal(porcentaje_str)
+                if porcentaje == 0:
+                    self.message_user(request, _("No se aplicó ningún cambio de precio ya que el porcentaje es 0%."), level=messages.WARNING)
+                    return HttpResponseRedirect(changelist_url)
+
+                updated_count = Material.actualizar_precios_por_porcentaje(queryset, porcentaje)
+
+                self.message_user(request, _(f"Se actualizaron {updated_count} materiales con un porcentaje del {porcentaje}%."), level=messages.SUCCESS)
+                return HttpResponseRedirect(changelist_url)
+
+            except InvalidOperation:
+                self.message_user(request, _("Error: Porcentaje no válido. Por favor, ingrese un número."), level=messages.ERROR)
+                return HttpResponseRedirect(changelist_url)
+            except Exception as e:
+                self.message_user(request, _(f"Ocurrió un error inesperado al aplicar el porcentaje: {e}"), level=messages.ERROR)
+                return HttpResponseRedirect(changelist_url)
+
+        # Si es un GET o un POST sin 'apply', mostrar formulario
+        selected_ids = queryset.values_list('pk', flat=True)
+        context = {
+            'title': _("Actualizar Precios de Materiales"),
+            'queryset': queryset,
+            'action_name': 'actualizar_precios_materiales',
+            'selected_ids': list(selected_ids),
+            'opts': self.model._meta,
+            'media': self.media,
+        }
+        return render(request, 'admin/recursos/material/update_prices.html', context)
+
+    actualizar_precios_materiales.short_description = _("Actualizar precios por porcentaje")
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('update-prices/', self.admin_site.admin_view(self.actualizar_precios_materiales), name='recursos_material_update_prices'),
+        ]
+        return my_urls + urls
 
 
-# Registros simples para los otros modelos de recursos
 admin.site.register(ManoDeObra)
 admin.site.register(Subcontrato)

@@ -1,5 +1,6 @@
 from django.db import models
 from general.models import Unidad, Subrubro, Proveedor, TipoMaterial, CategoriaMaterial
+from decimal import Decimal
 
 
 class Material(models.Model):
@@ -31,6 +32,20 @@ class Material(models.Model):
 
     def __str__(self):
         return self.nombre
+    
+    @classmethod
+    def actualizar_precios_por_porcentaje(cls, queryset, porcentaje):
+        if not isinstance(porcentaje, Decimal): # Asegúrate de que el porcentaje sea Decimal
+            porcentaje = Decimal(str(porcentaje))
+
+        factor = Decimal('1') + (porcentaje / Decimal('100'))
+
+        # Usar F() expressions para evitar race conditions y hacer la actualización en una sola consulta SQL
+        from django.db.models import F
+        queryset.update(precio_unidad_venta=F('precio_unidad_venta') * factor)
+
+        # Opcional: Podrías retornar el número de elementos actualizados
+        return queryset.count()
 
 class ManoDeObra(models.Model):
     EQUIPO_CHOICES = [
