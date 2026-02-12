@@ -1,133 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Presupuesto - Panel General{% endblock %}
+{% block title %}Presupuesto · Panel General{% endblock %}
 
 {% block content %}
-<main class="shell">
+<div class="shell">
     <header>
         <div class="title-block">
-            <h1>Presupuesto · Panel General</h1>
-            <p>Resumen de catálogos y recursos económicos base para la construcción de presupuestos.</p>
-        </div>
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            {% if request.company %}
-            <span class="chip">
-                <span class="chip-dot"></span>
-                <span>{{ request.company.nombre }}</span>
-            </span>
-            <a href="{% url 'usuarios:company_select' %}" class="link-back">Cambiar empresa</a>
-            {% endif %}
-            <div class="chip">
-                <span class="chip-dot"></span>
-                <span>
-                    {% if request.user.is_authenticated %}
-                        {{ request.user.username }}
-                    {% else %}
-                        Invitado
-                    {% endif %}
-                </span>
-            </div>
+            <h1>Panel General</h1>
+            <p>Acceso a índices, tareas y presupuestos.</p>
         </div>
     </header>
 
-    <section class="grid">
-        <section class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h2>Recursos económicos</h2>
-                <span class="pill">Base de cálculo de precios</span>
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:10px;">
-                <article class="card" style="padding:12px;">
-                    <a href="{% url 'recursos:material_list' %}" style="color:inherit; text-decoration:none;">
-                        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:4px;">Materiales</div>
-                        <div style="font-size:1.3rem; font-weight:600;">{{ totales.materiales }}</div>
-                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Insumos y precios</div>
-                    </a>
-                </article>
-                <article class="card" style="padding:12px;">
-                    <a href="{% url 'recursos:mano_de_obra_list' %}" style="color:inherit; text-decoration:none;">
-                        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:4px;">Mano de obra</div>
-                        <div style="font-size:1.3rem; font-weight:600;">{{ totales.mano_de_obra }}</div>
-                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Puestos y equipos</div>
-                    </a>
-                </article>
-                <article class="card" style="padding:12px;">
-                    <a href="{% url 'recursos:subcontrato_list' %}" style="color:inherit; text-decoration:none;">
-                        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:4px;">Subcontratos</div>
-                        <div style="font-size:1.3rem; font-weight:600;">{{ totales.subcontratos }}</div>
-                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Servicios tercerizados</div>
-                    </a>
-                </article>
-                <article class="card" style="padding:12px;">
-                    <a href="{% url 'recursos:mezcla_list' %}" style="color:inherit; text-decoration:none;">
-                        <div style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:4px;">Mezclas</div>
-                        <div style="font-size:1.3rem; font-weight:600;">{{ totales.mezclas }}</div>
-                        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Composición de materiales</div>
-                    </a>
-                </article>
-            </div>
-        </section>
-
-        <aside class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                <h2>Catálogos generales</h2>
-                <span class="pill">Estructura Rubro · Material</span>
-            </div>
-            <ul class="list">
-                <li class="list-item" style="background:#f8fafc; border-radius:8px;">
-                    <a href="{% url 'general:categoria_material_list' %}">
-                        <span>Categorías material</span>
-                        <span>{{ totales.categorias_material }}</span>
-                    </a>
-                </li>
-                <li class="list-item">
-                    <a href="{% url 'general:equipo_list' %}">
-                        <span>Equipos</span>
-                        <span>{{ totales.equipos }}</span>
-                    </a>
-                </li>
-                <li class="list-item">
-                    <a href="{% url 'general:ref_equipo_list' %}">
-                        <span>Ref. Equipos</span>
-                        <span>{{ totales.ref_equipos }}</span>
-                    </a>
-                </li>
-                <li class="list-item">
-                    <a href="{% url 'general:proveedor_list' %}">
-                        <span>Proveedores</span>
-                        <span>{{ totales.proveedores }}</span>
-                    </a>
-                </li>
-                <li class="list-item">
-                    <a href="{% url 'general:rubro_list' %}">
-                        <span>Rubros</span>
-                        <span>{{ totales.rubros }}</span>
-                    </a>
-                </li>
-                <li class="list-item">
-                    <a href="{% url 'general:subrubro_list' %}">
-                        <span>Subrubros</span>
-                        <span>{{ totales.subrubros }}</span>
-                    </a>
-                </li>
-                <li class="list-item">
-                    <a href="{% url 'general:tipo_material_list' %}">
-                        <span>Tipos material</span>
-                        <span>{{ totales.tipos_material }}</span>
-                    </a>
-                </li>
-                <li class="list-item">
-                    <a href="{% url 'general:unidad_list' %}">
-                        <span>Unidades</span>
-                        <span>{{ totales.unidades }}</span>
-                    </a>
-                </li>
-            </ul>
-        </aside>
+    <section class="panel-cards">
+        <a href="{% url 'general:tabla_dolar' %}" class="panel-card panel-card-dolar">
+            <h2>Tabla de Dólar</h2>
+            <p>Cotizaciones por fecha y tipo (Oficial, CCL, etc.).</p>
+        </a>
+        <a href="{% url 'general:indice' %}" class="panel-card">
+            <h2>Índice</h2>
+            <p>Catálogos generales: rubros, subrubros, unidades, equipos, proveedores y más.</p>
+        </a>
+        <a href="{% url 'tareas' %}" class="panel-card">
+            <h2>Tareas</h2>
+            <p>Recursos económicos: materiales, mano de obra, subcontratos, mezclas y lotes.</p>
+        </a>
+        <a href="{% url 'general:presupuesto' %}" class="panel-card">
+            <h2>Presupuesto</h2>
+            <p>Construcción de presupuestos por proyecto. (En desarrollo)</p>
+        </a>
     </section>
-
-    <footer>
-        <span>Este panel es solo un resumen de lectura. La lógica de cálculo de presupuestos y el historial de precios se implementan a nivel de modelos y vistas especializadas.</span>
-        <span>Stack: Django 5.2.3 · SQLite · Python</span>
-    </footer>
-</main>
+</div>
 {% endblock %}

@@ -1,6 +1,17 @@
 from django import forms
 
-from .models import CategoriaMaterial, Equipo, Proveedor, RefEquipo, Rubro, Subrubro, TipoMaterial, Unidad
+from .models import (
+    CategoriaMaterial,
+    CotizacionDolar,
+    Equipo,
+    Proveedor,
+    RefEquipo,
+    Rubro,
+    Subrubro,
+    TipoDolar,
+    TipoMaterial,
+    Unidad,
+)
 
 
 class RubroForm(forms.ModelForm):
@@ -100,6 +111,16 @@ class ProveedorForm(forms.ModelForm):
     class Meta:
         model = Proveedor
         fields = ["nombre", "direccion", "telefono", "email"]
+
+    def __init__(self, *args, request=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._request = request
+
+
+class TipoDolarForm(forms.ModelForm):
+    class Meta:
+        model = TipoDolar
+        fields = ["nombre"]
 
     def __init__(self, *args, request=None, **kwargs):
         super().__init__(*args, **kwargs)

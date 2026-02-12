@@ -5,11 +5,13 @@ from django.db import models
 from general.models import (
     CategoriaMaterial,
     Company,
+    CotizacionDolar,
     Equipo,
     Proveedor,
     RefEquipo,
     Rubro,
     Subrubro,
+    TipoDolar,
     TipoMaterial,
     Unidad,
 )
@@ -64,9 +66,11 @@ class Material(models.Model):
         verbose_name = "Material"
         verbose_name_plural = "Materiales"
         ordering = ["nombre"]
-        unique_together = ("company", "nombre")
+        unique_together = ("company", "nombre", "proveedor")
 
     def __str__(self):
+        if self.proveedor_id:
+            return f"{self.nombre} ({self.proveedor.nombre})"
         return self.nombre
 
     @classmethod
@@ -122,7 +126,7 @@ class ManoDeObra(models.Model):
         unique_together = ("company", "rubro", "subrubro", "tarea", "equipo", "ref_equipo")
 
     def __str__(self):
-        return f"{self.tarea} ({self.subrubro.nombre} - {self.equipo.nombre})"
+        return f"{self.tarea} ({self.subrubro.nombre} · {self.equipo.nombre} / {self.ref_equipo.nombre})"
 
     def precio_por_unidad_analisis(self):
         """UA = cantidad por unidad de venta × precio de venta."""
@@ -482,3 +486,264 @@ class HojaPrecioManoDeObra(models.Model):
         ):
             return self.cantidad_por_unidad_venta * self.precio_unidad_venta
         return Decimal("0")
+
+
+class Lote(models.Model):
+    """
+    Lote/versión de precios: agrupa las hojas de materiales, mano de obra
+    y subcontratos con la misma fecha. Al crear un lote se copian los precios
+    actuales (o de otro lote) a las tres hojas.
+    """
+    nombre = models.CharField(max_length=100)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="lotes",
+    )
+    hoja_materiales = models.ForeignKey(
+        HojaPrecios,
+        on_delete=models.CASCADE,
+        related_name="lotes",
+    )
+    hoja_mano_de_obra = models.ForeignKey(
+        HojaPreciosManoDeObra,
+        on_delete=models.CASCADE,
+        related_name="lotes",
+    )
+    hoja_subcontratos = models.ForeignKey(
+        HojaPreciosSubcontrato,
+        on_delete=models.CASCADE,
+        related_name="lotes",
+    )
+    tipo_dolar = models.ForeignKey(
+        TipoDolar,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="lotes",
+        help_text="Tipo de dólar para ver precios en USD.",
+    )
+    fecha_dolar = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha de cotización para convertir ARS a USD.",
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Lote"
+        verbose_name_plural = "Lotes"
+        ordering = ["-creado_en"]
+        unique_together = ("company", "nombre")
+
+    def __str__(self):
+        return self.nombre
+
+    def get_cotizacion_usd(self):
+        """Cotización ARS/USD para este lote. None si no está configurado."""
+        if not self.tipo_dolar_id or not self.fecha_dolar:
+            return None
+        try:
+            c = CotizacionDolar.objects.get(
+                company=self.company,
+                fecha=self.fecha_dolar,
+                tipo=self.tipo_dolar,
+            )
+            return c.valor
+        except CotizacionDolar.DoesNotExist:
+            return None
+
+
+class Tarea(models.Model):
+    """
+    Maestro Tareas: tareas de obra definidas por rubro/subrubro.
+    Cada tarea pertenece a un lote y está compuesta por recursos.
+    """
+    nombre = models.CharField(max_length=255)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="tareas",
+    )
+    rubro = models.ForeignKey(
+        Rubro, on_delete=models.PROTECT, related_name="tareas"
+    )
+    subrubro = models.ForeignKey(
+        Subrubro, on_delete=models.PROTECT, related_name="tareas"
+    )
+    lote = models.ForeignKey(
+        Lote,
+        on_delete=models.CASCADE,
+        related_name="tareas",
+    )
+
+    class Meta:
+        verbose_name = "Tarea"
+        verbose_name_plural = "Maestro Tareas"
+        ordering = ["rubro__nombre", "subrubro__nombre", "nombre"]
+        unique_together = ("company", "lote", "nombre")
+
+    def __str__(self):
+        return self.nombre
+
+    def precio_total(self):
+        total = Decimal("0")
+        for rec in self.recursos.select_related(
+            "material", "mano_de_obra", "subcontrato", "mezcla"
+        ).all():
+            total += rec.costo_total()
+        return total
+
+    def precio_total_usd(self):
+        """Total en USD (ARS convertidos). None si el lote no tiene cotización."""
+        total = Decimal("0")
+        for rec in self.recursos.all():
+            c = rec.costo_total_usd()
+            if c is None:
+                return None
+            total += c
+        return total
+
+
+class TareaRecurso(models.Model):
+    """Recurso que compone una tarea: material, mano de obra, subcontrato o mezcla."""
+    tarea = models.ForeignKey(
+        Tarea, on_delete=models.CASCADE, related_name="recursos"
+    )
+    material = models.ForeignKey(
+        Material,
+        on_delete=models.PROTECT,
+        related_name="tarea_recursos",
+        null=True,
+        blank=True,
+    )
+    mano_de_obra = models.ForeignKey(
+        ManoDeObra,
+        on_delete=models.PROTECT,
+        related_name="tarea_recursos",
+        null=True,
+        blank=True,
+    )
+    subcontrato = models.ForeignKey(
+        Subcontrato,
+        on_delete=models.PROTECT,
+        related_name="tarea_recursos",
+        null=True,
+        blank=True,
+    )
+    mezcla = models.ForeignKey(
+        Mezcla,
+        on_delete=models.PROTECT,
+        related_name="tarea_recursos",
+        null=True,
+        blank=True,
+    )
+    cantidad = models.DecimalField(max_digits=12, decimal_places=4)
+
+    class Meta:
+        verbose_name = "Recurso en Tarea"
+        verbose_name_plural = "Recursos en Tarea"
+
+    def get_recurso(self):
+        if self.material_id:
+            return self.material
+        if self.mano_de_obra_id:
+            return self.mano_de_obra
+        if self.subcontrato_id:
+            return self.subcontrato
+        if self.mezcla_id:
+            return self.mezcla
+        return None
+
+    def get_tipo(self):
+        if self.material_id:
+            return "material"
+        if self.mano_de_obra_id:
+            return "mano_de_obra"
+        if self.subcontrato_id:
+            return "subcontrato"
+        if self.mezcla_id:
+            return "mezcla"
+        return None
+
+    def precio_unitario(self):
+        """Precio por unidad del recurso según el lote."""
+        total = self.costo_total()
+        if total and self.cantidad:
+            return total / self.cantidad
+        return Decimal("0")
+
+    def precio_unitario_usd(self):
+        """UA en USD: precio unitario convertido a dólares."""
+        total_usd = self.costo_total_usd()
+        if total_usd is not None and self.cantidad and self.cantidad > 0:
+            return total_usd / self.cantidad
+        return None
+
+    def _get_hoja_precio_material(self, lote):
+        try:
+            return HojaPrecioMaterial.objects.get(
+                hoja=lote.hoja_materiales, material=self.material
+            )
+        except HojaPrecioMaterial.DoesNotExist:
+            return None
+
+    def _get_moneda(self, lote):
+        """Moneda del recurso: ARS o USD."""
+        if self.material_id:
+            hp = self._get_hoja_precio_material(lote)
+            return (hp.moneda if hp else "ARS") or "ARS"
+        if self.mano_de_obra_id:
+            return "ARS"
+        if self.subcontrato_id:
+            try:
+                hp = HojaPrecioSubcontrato.objects.get(
+                    hoja=lote.hoja_subcontratos, subcontrato=self.subcontrato
+                )
+                return hp.moneda or "ARS"
+            except HojaPrecioSubcontrato.DoesNotExist:
+                return "ARS"
+        if self.mezcla_id:
+            return "ARS"
+        return "ARS"
+
+    def costo_total(self):
+        lote = self.tarea.lote
+        if self.material_id:
+            hp = self._get_hoja_precio_material(lote)
+            return (self.cantidad * hp.precio_unidad_venta) if hp else Decimal("0")
+        if self.mano_de_obra_id:
+            try:
+                hp = HojaPrecioManoDeObra.objects.get(
+                    hoja=lote.hoja_mano_de_obra, mano_de_obra=self.mano_de_obra
+                )
+                return self.cantidad * hp.precio_unidad_venta
+            except HojaPrecioManoDeObra.DoesNotExist:
+                return Decimal("0")
+        if self.subcontrato_id:
+            try:
+                hp = HojaPrecioSubcontrato.objects.get(
+                    hoja=lote.hoja_subcontratos, subcontrato=self.subcontrato
+                )
+                return self.cantidad * hp.precio_unidad_venta
+            except HojaPrecioSubcontrato.DoesNotExist:
+                return Decimal("0")
+        if self.mezcla_id:
+            if self.mezcla.hoja_id == lote.hoja_materiales_id:
+                return self.cantidad * self.mezcla.precio_por_unidad_mezcla()
+            return Decimal("0")
+        return Decimal("0")
+
+    def costo_total_usd(self):
+        """Costo en USD: ARS se convierte según cotización del lote, USD queda igual."""
+        total = self.costo_total()
+        if total == 0:
+            return Decimal("0")
+        lote = self.tarea.lote
+        moneda = self._get_moneda(lote)
+        if moneda == "USD":
+            return total
+        cotiz = lote.get_cotizacion_usd()
+        if cotiz and cotiz > 0:
+            return total / cotiz
+        return None

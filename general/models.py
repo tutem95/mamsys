@@ -195,3 +195,47 @@ class CategoriaMaterial(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+class TipoDolar(models.Model):
+    """Tipos de cotización (Oficial, CCL, MEP, etc.). Cada empresa define los suyos."""
+    nombre = models.CharField(max_length=50)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="tipos_dolar",
+    )
+
+    class Meta:
+        verbose_name = "Tipo de Dólar"
+        verbose_name_plural = "Tipos de Dólar"
+        ordering = ["nombre"]
+        unique_together = ("company", "nombre")
+
+    def __str__(self):
+        return self.nombre
+
+
+class CotizacionDolar(models.Model):
+    """Cotización del dólar por fecha y tipo (ej: 12/01/2025 Oficial 1050)."""
+    fecha = models.DateField()
+    tipo = models.ForeignKey(
+        TipoDolar,
+        on_delete=models.CASCADE,
+        related_name="cotizaciones",
+    )
+    valor = models.DecimalField(max_digits=14, decimal_places=4)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="cotizaciones_dolar",
+    )
+
+    class Meta:
+        verbose_name = "Cotización Dólar"
+        verbose_name_plural = "Cotizaciones Dólar"
+        ordering = ["-fecha", "tipo__nombre"]
+        unique_together = ("company", "fecha", "tipo")
+
+    def __str__(self):
+        return f"{self.fecha} {self.tipo.nombre}: {self.valor}"

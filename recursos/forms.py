@@ -18,11 +18,14 @@ from .models import (
     HojaPrecios,
     HojaPreciosManoDeObra,
     HojaPreciosSubcontrato,
+    Lote,
     ManoDeObra,
     Material,
     Mezcla,
     MezclaMaterial,
     Subcontrato,
+    Tarea,
+    TareaRecurso,
 )
 
 
@@ -220,6 +223,97 @@ class MezclaMaterialForm(forms.ModelForm):
                 self.fields["material"].queryset = Material.objects.filter(
                     company=mezcla.company
                 ).select_related("proveedor", "unidad_de_venta")
+
+
+class TareaForm(forms.ModelForm):
+    class Meta:
+        model = Tarea
+        fields = ["nombre", "rubro", "subrubro"]
+
+    def __init__(self, *args, request=None, lote=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if request and request.company:
+            self.fields["rubro"].queryset = Rubro.objects.filter(
+                company=request.company
+            )
+            self.fields["subrubro"].queryset = Subrubro.objects.filter(
+                company=request.company
+            )
+
+
+class TareaRecursoForm(forms.Form):
+    """Form para agregar un recurso a una tarea."""
+    tipo = forms.ChoiceField(
+        choices=[
+            ("material", "Material"),
+            ("mano_de_obra", "Mano de obra"),
+            ("subcontrato", "Subcontrato"),
+            ("mezcla", "Mezcla"),
+        ],
+        widget=forms.RadioSelect,
+    )
+    material = forms.ModelChoiceField(
+        queryset=Material.objects.none(),
+        required=False,
+        empty_label="-- Elegir material --",
+    )
+    mano_de_obra = forms.ModelChoiceField(
+        queryset=ManoDeObra.objects.none(),
+        required=False,
+        empty_label="-- Elegir puesto --",
+    )
+    subcontrato = forms.ModelChoiceField(
+        queryset=Subcontrato.objects.none(),
+        required=False,
+        empty_label="-- Elegir subcontrato --",
+    )
+    mezcla = forms.ModelChoiceField(
+        queryset=Mezcla.objects.none(),
+        required=False,
+        empty_label="-- Elegir mezcla --",
+    )
+    cantidad = forms.DecimalField(
+        max_digits=12, decimal_places=4,
+        widget=forms.NumberInput(attrs={"step": "0.01", "min": "0"})
+    )
+
+    def __init__(self, *args, lote=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if lote:
+            # Materiales de la hoja de materiales (incl. proveedor para distinguir)
+            mat_ids = lote.hoja_materiales.detalles.values_list("material_id", flat=True)
+            self.fields["material"].queryset = Material.objects.filter(
+                pk__in=mat_ids
+            ).select_related("proveedor", "unidad_de_venta").order_by("nombre", "proveedor__nombre")
+            # Mano de obra de la hoja (incl. equipo y ref_equipo para distinguir)
+            mo_ids = lote.hoja_mano_de_obra.detalles.values_list("mano_de_obra_id", flat=True)
+            self.fields["mano_de_obra"].queryset = ManoDeObra.objects.filter(
+                pk__in=mo_ids
+            ).select_related("unidad_de_venta", "equipo", "ref_equipo", "subrubro").order_by(
+                "tarea", "equipo__nombre", "ref_equipo__nombre"
+            )
+            # Subcontratos de la hoja
+            sub_ids = lote.hoja_subcontratos.detalles.values_list("subcontrato_id", flat=True)
+            self.fields["subcontrato"].queryset = Subcontrato.objects.filter(
+                pk__in=sub_ids
+            ).select_related("proveedor", "unidad_de_venta")
+            # Mezclas que usan la hoja de materiales del lote
+            self.fields["mezcla"].queryset = Mezcla.objects.filter(
+                hoja=lote.hoja_materiales
+            ).select_related("unidad_de_mezcla")
+
+    def clean(self):
+        data = super().clean()
+        tipo = data.get("tipo")
+        if tipo == "material" and not data.get("material"):
+            raise forms.ValidationError("Seleccioná un material.")
+        if tipo == "mano_de_obra" and not data.get("mano_de_obra"):
+            raise forms.ValidationError("Seleccioná mano de obra.")
+        if tipo == "subcontrato" and not data.get("subcontrato"):
+            raise forms.ValidationError("Seleccioná un subcontrato.")
+        if tipo == "mezcla" and not data.get("mezcla"):
+            raise forms.ValidationError("Seleccioná una mezcla.")
+        return data
 
 
 class HojaPrecioSubcontratoForm(forms.ModelForm):

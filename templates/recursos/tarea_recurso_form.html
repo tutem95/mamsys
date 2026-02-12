@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Agregar recurso a {{ tarea.nombre }} · Presupuesto{% endblock %}
+
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>Agregar recurso a {{ tarea.nombre }}</h1>
+            <p>Lote: {{ lote.nombre }} · Los recursos deben estar en las hojas del lote.</p>
+            <a class="link link-back" href="{% url 'recursos:tarea_detalle' lote.pk tarea.pk %}">← Volver a la tarea</a>
+        </div>
+    </header>
+
+    <section class="card">
+        <form method="post">
+            {% csrf_token %}
+            <div class="field">
+                <label>Tipo de recurso</label>
+                {{ form.tipo }}
+            </div>
+            <div id="field-material" class="field" style="display:none;">
+                <label for="id_material">Material (proveedor)</label>
+                {{ form.material }}
+                <span class="field-hint">Si el mismo material tiene varios proveedores, elegí el que corresponda.</span>
+            </div>
+            <div id="field-mano_de_obra" class="field" style="display:none;">
+                <label for="id_mano_de_obra">Mano de obra (equipo / ref. equipo)</label>
+                {{ form.mano_de_obra }}
+                <span class="field-hint">La misma tarea puede tener distintos equipos con distintos precios.</span>
+            </div>
+            <div id="field-subcontrato" class="field" style="display:none;">
+                <label for="id_subcontrato">Subcontrato</label>
+                {{ form.subcontrato }}
+            </div>
+            <div id="field-mezcla" class="field" style="display:none;">
+                <label for="id_mezcla">Mezcla</label>
+                {{ form.mezcla }}
+            </div>
+            <div class="field">
+                <label for="id_cantidad">Cantidad</label>
+                {{ form.cantidad }}
+            </div>
+            <button type="submit" class="btn btn-primary">Agregar</button>
+            <a href="{% url 'recursos:tarea_detalle' lote.pk tarea.pk %}" class="btn-link">Cancelar</a>
+        </form>
+    </section>
+</main>
+<script>
+document.querySelectorAll('input[name="tipo"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        document.querySelectorAll('[id^="field-"]').forEach(function(f) { f.style.display = 'none'; });
+        var field = document.getElementById('field-' + this.value);
+        if (field) field.style.display = '';
+    });
+});
+var checked = document.querySelector('input[name="tipo"]:checked');
+if (checked) {
+    document.getElementById('field-' + checked.value).style.display = '';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Tipos de Dólar · Presupuesto{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div>
+            <h1>Tipos de Dólar</h1>
+            <p>Definí los tipos de cotización (Oficial, CCL, MEP, etc.) para la tabla de dólar.</p>
+        </div>
+        <a class="link link-back" href="{% url 'general:indice' %}">← Volver al índice</a>
+    </header>
+
+    <section class="layout">
+        <section class="card">
+            <h2>{% if editing %}Editar tipo{% else %}Nuevo tipo{% endif %}</h2>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Listado</h2>
+            {% if tipos %}
+                <table>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nombre</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for tipo in tipos %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ tipo.nombre }}</td>
+                            <td class="actions">
+                                <a href="{% url 'general:tipo_dolar_edit' tipo.pk %}" class="btn-link">Editar</a>
+                                |
+                                <form action="{% url 'general:tipo_dolar_delete' tipo.pk %}" method="post" style="display:inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este tipo?');">Eliminar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="font-size:0.9rem; color:var(--text-muted);">No hay tipos cargados. Creá Oficial, CCL, etc.</p>
+            {% endif %}
+        </section>
+    </section>
+</div>
+{% endblock %}

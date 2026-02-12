@@ -91,6 +91,24 @@ urlpatterns = [
         views.hoja_subcontrato_detalle_delete,
         name="hoja_subcontrato_detalle_delete",
     ),
+    # Lotes y Maestro Tareas
+    path("lotes/", views.lote_list, name="lote_list"),
+    path("lotes/<int:pk>/", views.lote_detalle, name="lote_detalle"),
+    path("lotes/<int:lote_pk>/tareas/", views.tarea_list, name="tarea_list"),
+    path("lotes/<int:lote_pk>/tareas/nueva/", views.tarea_create, name="tarea_create"),
+    path("lotes/<int:lote_pk>/tareas/<int:pk>/", views.tarea_detalle, name="tarea_detalle"),
+    path("lotes/<int:lote_pk>/tareas/<int:pk>/editar/", views.tarea_edit, name="tarea_edit"),
+    path("lotes/<int:lote_pk>/tareas/<int:pk>/eliminar/", views.tarea_delete, name="tarea_delete"),
+    path(
+        "lotes/<int:lote_pk>/tareas/<int:tarea_pk>/agregar-recurso/",
+        views.tarea_recurso_add,
+        name="tarea_recurso_add",
+    ),
+    path(
+        "lotes/<int:lote_pk>/tareas/<int:tarea_pk>/recurso/<int:recurso_pk>/eliminar/",
+        views.tarea_recurso_delete,
+        name="tarea_recurso_delete",
+    ),
     # Mezclas
     path("mezclas/", views.mezcla_list, name="mezcla_list"),
     path("mezclas/<int:pk>/", views.mezcla_detalle, name="mezcla_detalle"),

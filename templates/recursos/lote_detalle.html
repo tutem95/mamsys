@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Lote {{ lote.nombre }} · Presupuesto{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div class="title-block">
+            <h1>Lote: {{ lote.nombre }}</h1>
+            <p>Precios y tareas de esta versión. Elegí tipo y fecha de dólar para ver totales en USD.</p>
+        </div>
+        <a class="link link-back" href="{% url 'tareas' %}">← Volver a lotes</a>
+    </header>
+
+    <section class="card lote-dolar-card">
+        <h2 style="margin:0 0 12px;">Vista en USD</h2>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:12px;">Elegí el tipo de dólar y la fecha para convertir ARS a USD en las tareas.</p>
+        <form method="post" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="hidden" name="form" value="dolar">
+            <div class="field" style="margin-bottom:0;">
+                <label for="tipo_dolar">Tipo de dólar</label>
+                <select name="tipo_dolar" id="tipo_dolar">
+                    <option value="">-- No convertir --</option>
+                    {% for t in tipos_dolar %}
+                    <option value="{{ t.pk }}" {% if lote.tipo_dolar_id == t.pk %}selected{% endif %}>{{ t.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field" style="margin-bottom:0;">
+                <label for="fecha_dolar">Fecha cotización</label>
+                <input type="date" name="fecha_dolar" id="fecha_dolar" value="{{ lote.fecha_dolar|date:'Y-m-d' }}">
+            </div>
+            <button type="submit" class="btn btn-primary">Aplicar</button>
+        </form>
+        {% if lote.tipo_dolar and lote.fecha_dolar %}
+        <p style="font-size:0.88rem; margin-top:8px; color:var(--accent);">Usando {{ lote.tipo_dolar.nombre }} del {{ lote.fecha_dolar|date:"d/m/Y" }}.</p>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <h2 style="margin:0 0 16px;">Secciones del lote</h2>
+        <ul class="lote-secciones">
+            <li class="lote-seccion">
+                <a href="{% url 'recursos:tarea_list' lote.pk %}" class="lote-seccion-link lote-seccion-maestro">
+                    <span class="lote-seccion-titulo">Maestro Tareas</span>
+                    <span class="lote-seccion-desc">{{ lote.tareas.count }} tareas</span>
+                </a>
+            </li>
+            <li class="lote-seccion">
+                <a href="{% url 'recursos:material_list' %}?hoja={{ lote.hoja_materiales.pk }}" class="lote-seccion-link">
+                    <span class="lote-seccion-titulo">Materiales</span>
+                    <span class="lote-seccion-desc">{{ lote.hoja_materiales.nombre }} · Ver / editar precios</span>
+                </a>
+            </li>
+            <li class="lote-seccion">
+                <a href="{% url 'recursos:hoja_mano_de_obra_detalle' lote.hoja_mano_de_obra.pk %}" class="lote-seccion-link">
+                    <span class="lote-seccion-titulo">Mano de obra</span>
+                    <span class="lote-seccion-desc">{{ lote.hoja_mano_de_obra.nombre }} · Ver / editar precios</span>
+                </a>
+            </li>
+            <li class="lote-seccion">
+                <a href="{% url 'recursos:hoja_subcontrato_detalle' lote.hoja_subcontratos.pk %}" class="lote-seccion-link">
+                    <span class="lote-seccion-titulo">Subcontratos</span>
+                    <span class="lote-seccion-desc">{{ lote.hoja_subcontratos.nombre }} · Ver / editar precios</span>
+                </a>
+            </li>
+            <li class="lote-seccion">
+                <a href="{% url 'recursos:mezcla_list' %}?hoja={{ lote.hoja_materiales.pk }}" class="lote-seccion-link">
+                    <span class="lote-seccion-titulo">Mezclas</span>
+                    <span class="lote-seccion-desc">Mezclas que usan la hoja de materiales de este lote</span>
+                </a>
+            </li>
+        </ul>
+    </section>
+</div>
+{% endblock %}

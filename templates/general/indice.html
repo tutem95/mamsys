@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Índice · Presupuesto{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div class="title-block">
+            <h1>Índice</h1>
+            <p>Catálogos generales: estructura Rubro · Material.</p>
+        </div>
+        <a href="{% url 'general:dashboard' %}" class="link-back">← Volver al panel</a>
+    </header>
+
+    <section class="card">
+        <h2 style="margin-top:0;">Catálogos</h2>
+        <ul class="list">
+            <li class="list-item" style="background:#f8fafc; border-radius:8px;">
+                <a href="{% url 'general:categoria_material_list' %}">
+                    <span>Categorías material</span>
+                    <span>{{ totales.categorias_material }}</span>
+                </a>
+            </li>
+            <li class="list-item">
+                <a href="{% url 'general:equipo_list' %}">
+                    <span>Equipos</span>
+                    <span>{{ totales.equipos }}</span>
+                </a>
+            </li>
+            <li class="list-item">
+                <a href="{% url 'general:ref_equipo_list' %}">
+                    <span>Ref. Equipos</span>
+                    <span>{{ totales.ref_equipos }}</span>
+                </a>
+            </li>
+            <li class="list-item">
+                <a href="{% url 'general:proveedor_list' %}">
+                    <span>Proveedores</span>
+                    <span>{{ totales.proveedores }}</span>
+                </a>
+            </li>
+            <li class="list-item">
+                <a href="{% url 'general:rubro_list' %}">
+                    <span>Rubros</span>
+                    <span>{{ totales.rubros }}</span>
+                </a>
+            </li>
+            <li class="list-item">
+                <a href="{% url 'general:subrubro_list' %}">
+                    <span>Subrubros</span>
+                    <span>{{ totales.subrubros }}</span>
+                </a>
+            </li>
+            <li class="list-item">
+                <a href="{% url 'general:tipo_material_list' %}">
+                    <span>Tipos material</span>
+                    <span>{{ totales.tipos_material }}</span>
+                </a>
+            </li>
+            <li class="list-item">
+                <a href="{% url 'general:unidad_list' %}">
+                    <span>Unidades</span>
+                    <span>{{ totales.unidades }}</span>
+                </a>
+            </li>
+            <li class="list-item">
+                <a href="{% url 'general:tipo_dolar_list' %}">
+                    <span>Tipos de dólar</span>
+                    <span>{{ totales.tipos_dolar }}</span>
+                </a>
+            </li>
+        </ul>
+    </section>
+</div>
+{% endblock %}

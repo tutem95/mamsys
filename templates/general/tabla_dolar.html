@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Tabla de Dólar · Presupuesto{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div>
+            <h1>Tabla de Dólar</h1>
+            <p>Cotizaciones por fecha y tipo. Usá los tipos definidos en el Índice.</p>
+        </div>
+        <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
+        <a href="{% url 'general:tipo_dolar_list' %}" class="link" style="margin-left:8px;">Tipos de dólar</a>
+    </header>
+
+    <section class="card">
+        <h2>Agregar fila</h2>
+        <form method="post" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            {% csrf_token %}
+            <div class="field" style="margin-bottom:0;">
+                <label for="fecha">Fecha</label>
+                <input type="date" name="fecha" id="fecha" required>
+            </div>
+            {% for tipo in tipos %}
+            <div class="field" style="margin-bottom:0;">
+                <label for="tipo_{{ tipo.pk }}">{{ tipo.nombre }}</label>
+                <input type="text" name="tipo_{{ tipo.pk }}" id="tipo_{{ tipo.pk }}" placeholder="0" style="width:100px;">
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Guardar</button>
+        </form>
+        <p class="field-hint" style="margin-top:8px;">Completá la fecha y al menos un valor. Los vacíos no se guardan.</p>
+    </section>
+
+    <section class="card">
+        <h2>Cotizaciones</h2>
+        {% if rows %}
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                <tr>
+                    <th>Fecha</th>
+                    {% for tipo in tipos %}
+                    <th class="num">{{ tipo.nombre }}</th>
+                    {% endfor %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row.fecha|date:"d/m/Y" }}</td>
+                    {% for valor in row.valores %}
+                    <td class="num">{% if valor %}{{ valor|floatformat:2 }}{% else %}-{% endif %}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="font-size:0.9rem; color:var(--text-muted);">
+            No hay cotizaciones. Agregá filas arriba. Primero creá tipos en
+            <a href="{% url 'general:tipo_dolar_list' %}">Tipos de dólar</a>.
+        </p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

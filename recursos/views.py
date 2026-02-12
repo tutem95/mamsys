@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required
@@ -13,6 +14,8 @@ from .forms import (
     MezclaForm,
     MezclaMaterialForm,
     SubcontratoForm,
+    TareaForm,
+    TareaRecursoForm,
 )
 from .models import (
     HojaPrecioMaterial,
@@ -21,11 +24,14 @@ from .models import (
     HojaPrecios,
     HojaPreciosManoDeObra,
     HojaPreciosSubcontrato,
+    Lote,
     ManoDeObra,
     Material,
     Mezcla,
     MezclaMaterial,
     Subcontrato,
+    Tarea,
+    TareaRecurso,
 )
 
 
@@ -705,6 +711,337 @@ def mezcla_material_delete(request, mezcla_pk, detalle_pk):
         detalle.delete()
         return redirect("recursos:mezcla_detalle", pk=mezcla.pk)
     return redirect("recursos:mezcla_detalle", pk=mezcla.pk)
+
+
+def _copy_hoja_materiales_desde_origen(hoja_origen, nombre, company):
+    """Copia una hoja de materiales desde otra hoja o desde precios actuales."""
+    hoja = HojaPrecios.objects.create(nombre=nombre, company=company)
+    if hoja_origen:
+        hoja.origen = hoja_origen
+        hoja.save()
+        for d in hoja_origen.detalles.select_related("material").all():
+            HojaPrecioMaterial.objects.create(
+                hoja=hoja,
+                material=d.material,
+                cantidad_por_unidad_venta=d.cantidad_por_unidad_venta,
+                precio_unidad_venta=d.precio_unidad_venta,
+                moneda=d.moneda,
+            )
+    else:
+        for m in Material.objects.filter(company=company):
+            HojaPrecioMaterial.objects.create(
+                hoja=hoja,
+                material=m,
+                cantidad_por_unidad_venta=m.cantidad_por_unidad_venta,
+                precio_unidad_venta=m.precio_unidad_venta,
+                moneda=m.moneda,
+            )
+    return hoja
+
+
+def _copy_hoja_mo_desde_origen(hoja_origen, nombre, company):
+    """Copia hoja de mano de obra."""
+    hoja = HojaPreciosManoDeObra.objects.create(nombre=nombre, company=company)
+    if hoja_origen:
+        hoja.origen = hoja_origen
+        hoja.save()
+        for d in hoja_origen.detalles.select_related("mano_de_obra").all():
+            HojaPrecioManoDeObra.objects.create(
+                hoja=hoja,
+                mano_de_obra=d.mano_de_obra,
+                cantidad_por_unidad_venta=d.cantidad_por_unidad_venta,
+                precio_unidad_venta=d.precio_unidad_venta,
+            )
+    else:
+        for md in ManoDeObra.objects.filter(company=company):
+            HojaPrecioManoDeObra.objects.create(
+                hoja=hoja,
+                mano_de_obra=md,
+                cantidad_por_unidad_venta=md.cantidad_por_unidad_venta,
+                precio_unidad_venta=md.precio_unidad_venta,
+            )
+    return hoja
+
+
+def _copy_hoja_subcontratos_desde_origen(hoja_origen, nombre, company):
+    """Copia hoja de subcontratos."""
+    hoja = HojaPreciosSubcontrato.objects.create(nombre=nombre, company=company)
+    if hoja_origen:
+        hoja.origen = hoja_origen
+        hoja.save()
+        for d in hoja_origen.detalles.select_related("subcontrato").all():
+            HojaPrecioSubcontrato.objects.create(
+                hoja=hoja,
+                subcontrato=d.subcontrato,
+                cantidad_por_unidad_venta=d.cantidad_por_unidad_venta,
+                precio_unidad_venta=d.precio_unidad_venta,
+                moneda=d.moneda,
+            )
+    else:
+        for s in Subcontrato.objects.filter(company=company):
+            HojaPrecioSubcontrato.objects.create(
+                hoja=hoja,
+                subcontrato=s,
+                cantidad_por_unidad_venta=s.cantidad_por_unidad_venta,
+                precio_unidad_venta=s.precio_unidad_venta,
+                moneda=s.moneda,
+            )
+    return hoja
+
+
+def _copy_mezclas_desde_hoja(hoja_origen, hoja_nueva, company):
+    """Copia mezclas que usan hoja_origen, creando nuevas que usan hoja_nueva."""
+    if not hoja_origen:
+        return
+    for mezcla in Mezcla.objects.filter(company=company, hoja=hoja_origen).prefetch_related("detalles"):
+        nueva_mezcla = Mezcla.objects.create(
+            nombre=mezcla.nombre,
+            company=company,
+            unidad_de_mezcla=mezcla.unidad_de_mezcla,
+            hoja=hoja_nueva,
+        )
+        for det in mezcla.detalles.all():
+            MezclaMaterial.objects.create(
+                mezcla=nueva_mezcla,
+                material=det.material,
+                cantidad=det.cantidad,
+            )
+
+
+def _copy_tareas_desde_lote(lote_origen, lote_nuevo, company):
+    """Copia tareas y recursos desde un lote a otro."""
+    if not lote_origen:
+        return
+    hoja_nueva = lote_nuevo.hoja_materiales
+    for t in Tarea.objects.filter(lote=lote_origen, company=company).select_related("rubro", "subrubro"):
+        nueva_t = Tarea.objects.create(
+            nombre=t.nombre,
+            company=company,
+            rubro=t.rubro,
+            subrubro=t.subrubro,
+            lote=lote_nuevo,
+        )
+        for r in t.recursos.all():
+            mezcla_nueva = None
+            if r.mezcla_id:
+                # Buscar la mezcla copiada (misma nombre, hoja del nuevo lote)
+                mezcla_nueva = Mezcla.objects.filter(
+                    company=company, nombre=r.mezcla.nombre, hoja=hoja_nueva
+                ).first()
+            TareaRecurso.objects.create(
+                tarea=nueva_t,
+                material=r.material,
+                mano_de_obra=r.mano_de_obra,
+                subcontrato=r.subcontrato,
+                mezcla=mezcla_nueva,
+                cantidad=r.cantidad,
+            )
+
+
+@login_required
+def lote_list(request):
+    company = request.company
+    lotes = Lote.objects.filter(company=company).select_related(
+        "hoja_materiales", "hoja_mano_de_obra", "hoja_subcontratos"
+    ).order_by("-creado_en")
+
+    if request.method == "POST":
+        nombre = (request.POST.get("nombre") or "").strip()
+        origen_mat = request.POST.get("origen_materiales")  # "actual" or lote pk
+        origen_mo = request.POST.get("origen_mo")
+        origen_sub = request.POST.get("origen_subcontratos")
+        origen_mezclas = request.POST.get("origen_mezclas")
+        origen_maestro = request.POST.get("origen_maestro")  # lote pk only
+
+        if not nombre:
+            return redirect("tareas")
+
+        hoja_mat_origen = None
+        hoja_mo_origen = None
+        hoja_sub_origen = None
+        hoja_mezclas_origen = None
+        lote_maestro_origen = None
+
+        if origen_mat and origen_mat != "actual":
+            lote_mat = get_object_or_404(Lote, pk=origen_mat, company=company)
+            hoja_mat_origen = lote_mat.hoja_materiales
+        if origen_mo and origen_mo != "actual":
+            lote_mo = get_object_or_404(Lote, pk=origen_mo, company=company)
+            hoja_mo_origen = lote_mo.hoja_mano_de_obra
+        if origen_sub and origen_sub != "actual":
+            lote_sub = get_object_or_404(Lote, pk=origen_sub, company=company)
+            hoja_sub_origen = lote_sub.hoja_subcontratos
+        if origen_mezclas and origen_mezclas != "actual":
+            lote_mez = get_object_or_404(Lote, pk=origen_mezclas, company=company)
+            hoja_mezclas_origen = lote_mez.hoja_materiales
+        if origen_maestro:
+            lote_maestro_origen = get_object_or_404(Lote, pk=origen_maestro, company=company)
+
+        hoja_mat = _copy_hoja_materiales_desde_origen(hoja_mat_origen, nombre, company)
+        hoja_mo = _copy_hoja_mo_desde_origen(hoja_mo_origen, nombre, company)
+        hoja_sub = _copy_hoja_subcontratos_desde_origen(hoja_sub_origen, nombre, company)
+
+        _copy_mezclas_desde_hoja(hoja_mezclas_origen, hoja_mat, company)
+
+        lote_nuevo = Lote.objects.create(
+            nombre=nombre,
+            company=company,
+            hoja_materiales=hoja_mat,
+            hoja_mano_de_obra=hoja_mo,
+            hoja_subcontratos=hoja_sub,
+        )
+        _copy_tareas_desde_lote(lote_maestro_origen, lote_nuevo, company)
+
+        return redirect("tareas")
+
+    return render(request, "recursos/lote_list.html", {"lotes": lotes})
+
+
+@login_required
+def lote_detalle(request, pk):
+    from general.models import TipoDolar
+
+    lote = get_object_or_404(Lote.objects.select_related("tipo_dolar"), pk=pk, company=request.company)
+    tipos_dolar = TipoDolar.objects.filter(company=request.company).order_by("nombre")
+
+    if request.method == "POST" and request.POST.get("form") == "dolar":
+        tipo_id = request.POST.get("tipo_dolar") or None
+        fecha_str = request.POST.get("fecha_dolar") or None
+        lote.tipo_dolar_id = int(tipo_id) if tipo_id else None
+        lote.fecha_dolar = datetime.strptime(fecha_str, "%Y-%m-%d").date() if fecha_str else None
+        lote.save()
+        return redirect("recursos:lote_detalle", pk=lote.pk)
+
+    return render(
+        request,
+        "recursos/lote_detalle.html",
+        {"lote": lote, "tipos_dolar": tipos_dolar},
+    )
+
+
+@login_required
+def tarea_list(request, lote_pk):
+    lote = get_object_or_404(Lote.objects.select_related("tipo_dolar"), pk=lote_pk, company=request.company)
+    tareas = lote.tareas.select_related("rubro", "subrubro").order_by(
+        "rubro__nombre", "subrubro__nombre", "nombre"
+    )
+    return render(
+        request,
+        "recursos/tarea_list.html",
+        {"lote": lote, "tareas": tareas},
+    )
+
+
+@login_required
+def tarea_detalle(request, lote_pk, pk):
+    lote = get_object_or_404(Lote, pk=lote_pk, company=request.company)
+    tarea = get_object_or_404(Tarea, pk=pk, lote=lote, company=request.company)
+    recursos = tarea.recursos.select_related(
+        "material", "material__proveedor", "material__unidad_de_venta",
+        "mano_de_obra", "mano_de_obra__unidad_de_venta", "mano_de_obra__equipo", "mano_de_obra__ref_equipo",
+        "subcontrato", "subcontrato__proveedor", "subcontrato__unidad_de_venta",
+        "mezcla", "mezcla__unidad_de_mezcla",
+    ).all()
+    total = sum(r.costo_total() for r in recursos)
+    total_usd = tarea.precio_total_usd()
+    return render(
+        request,
+        "recursos/tarea_detalle.html",
+        {"lote": lote, "tarea": tarea, "recursos": recursos, "total": total, "total_usd": total_usd},
+    )
+
+
+@login_required
+def tarea_create(request, lote_pk):
+    lote = get_object_or_404(Lote, pk=lote_pk, company=request.company)
+    if request.method == "POST":
+        form = TareaForm(request.POST, request=request)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.company = request.company
+            obj.lote = lote
+            obj.save()
+            return redirect("recursos:tarea_detalle", lote_pk=lote.pk, pk=obj.pk)
+    else:
+        form = TareaForm(request=request)
+
+    return render(
+        request,
+        "recursos/tarea_form.html",
+        {"form": form, "lote": lote, "editing": False},
+    )
+
+
+@login_required
+def tarea_edit(request, lote_pk, pk):
+    lote = get_object_or_404(Lote, pk=lote_pk, company=request.company)
+    tarea = get_object_or_404(Tarea, pk=pk, lote=lote, company=request.company)
+    if request.method == "POST":
+        form = TareaForm(request.POST, instance=tarea, request=request)
+        if form.is_valid():
+            form.save()
+            return redirect("recursos:tarea_detalle", lote_pk=lote.pk, pk=tarea.pk)
+    else:
+        form = TareaForm(instance=tarea, request=request)
+
+    return render(
+        request,
+        "recursos/tarea_form.html",
+        {"form": form, "lote": lote, "tarea": tarea, "editing": True},
+    )
+
+
+@login_required
+def tarea_delete(request, lote_pk, pk):
+    lote = get_object_or_404(Lote, pk=lote_pk, company=request.company)
+    tarea = get_object_or_404(Tarea, pk=pk, lote=lote, company=request.company)
+    if request.method == "POST":
+        tarea.delete()
+        return redirect("recursos:tarea_list", lote_pk=lote.pk)
+    return render(
+        request,
+        "general/confirm_delete.html",
+        {"object": tarea, "cancel_url": reverse("recursos:tarea_list", args=[lote.pk])},
+    )
+
+
+@login_required
+def tarea_recurso_add(request, lote_pk, tarea_pk):
+    lote = get_object_or_404(Lote, pk=lote_pk, company=request.company)
+    tarea = get_object_or_404(Tarea, pk=tarea_pk, lote=lote, company=request.company)
+    if request.method == "POST":
+        form = TareaRecursoForm(request.POST, lote=lote)
+        if form.is_valid():
+            tipo = form.cleaned_data["tipo"]
+            cantidad = form.cleaned_data["cantidad"]
+            if tipo == "material":
+                TareaRecurso.objects.create(tarea=tarea, material=form.cleaned_data["material"], cantidad=cantidad)
+            elif tipo == "mano_de_obra":
+                TareaRecurso.objects.create(tarea=tarea, mano_de_obra=form.cleaned_data["mano_de_obra"], cantidad=cantidad)
+            elif tipo == "subcontrato":
+                TareaRecurso.objects.create(tarea=tarea, subcontrato=form.cleaned_data["subcontrato"], cantidad=cantidad)
+            elif tipo == "mezcla":
+                TareaRecurso.objects.create(tarea=tarea, mezcla=form.cleaned_data["mezcla"], cantidad=cantidad)
+            return redirect("recursos:tarea_detalle", lote_pk=lote.pk, pk=tarea.pk)
+    else:
+        form = TareaRecursoForm(lote=lote)
+
+    return render(
+        request,
+        "recursos/tarea_recurso_form.html",
+        {"form": form, "lote": lote, "tarea": tarea},
+    )
+
+
+@login_required
+def tarea_recurso_delete(request, lote_pk, tarea_pk, recurso_pk):
+    lote = get_object_or_404(Lote, pk=lote_pk, company=request.company)
+    tarea = get_object_or_404(Tarea, pk=tarea_pk, lote=lote, company=request.company)
+    recurso = get_object_or_404(TareaRecurso, pk=recurso_pk, tarea=tarea)
+    if request.method == "POST":
+        recurso.delete()
+        return redirect("recursos:tarea_detalle", lote_pk=lote.pk, pk=tarea.pk)
+    return redirect("recursos:tarea_detalle", lote_pk=lote.pk, pk=tarea.pk)
 
 
 @login_required

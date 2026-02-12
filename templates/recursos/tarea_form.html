@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Editar{% else %}Nueva{% endif %} tarea · Presupuesto{% endblock %}
+
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>{% if editing %}Editar tarea{% else %}Nueva tarea{% endif %}</h1>
+            <p>Lote: {{ lote.nombre }}</p>
+            <a class="link link-back" href="{% url 'recursos:tarea_list' lote.pk %}">← Volver a tareas</a>
+        </div>
+    </header>
+
+    <section class="card">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'recursos:tarea_list' lote.pk %}" class="btn-link">Cancelar</a>
+        </form>
+    </section>
+</main>
+{% endblock %}

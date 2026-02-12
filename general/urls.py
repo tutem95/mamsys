@@ -7,6 +7,8 @@ app_name = "general"
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+    path("indice/", views.indice, name="indice"),
+    path("presupuesto/", views.presupuesto, name="presupuesto"),
     # Rubros
     path("rubros/", views.rubro_list, name="rubro_list"),
     path("rubros/<int:pk>/editar/", views.rubro_edit, name="rubro_edit"),
@@ -83,5 +85,11 @@ urlpatterns = [
         views.proveedor_delete,
         name="proveedor_delete",
     ),
+    # Tipos de dólar
+    path("tipos-dolar/", views.tipo_dolar_list, name="tipo_dolar_list"),
+    path("tipos-dolar/<int:pk>/editar/", views.tipo_dolar_edit, name="tipo_dolar_edit"),
+    path("tipos-dolar/<int:pk>/eliminar/", views.tipo_dolar_delete, name="tipo_dolar_delete"),
+    # Tabla de dólar
+    path("tabla-dolar/", views.tabla_dolar, name="tabla_dolar"),
 ]
 

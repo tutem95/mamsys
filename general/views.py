@@ -1,8 +1,21 @@
+from decimal import Decimal, InvalidOperation
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from general.models import CategoriaMaterial, Equipo, Proveedor, RefEquipo, Rubro, Subrubro, TipoMaterial, Unidad
-from recursos.models import ManoDeObra, Material, Mezcla, Subcontrato
+from general.models import (
+    CategoriaMaterial,
+    CotizacionDolar,
+    Equipo,
+    Proveedor,
+    RefEquipo,
+    Rubro,
+    Subrubro,
+    TipoDolar,
+    TipoMaterial,
+    Unidad,
+)
+from recursos.models import Lote, ManoDeObra, Material, Mezcla, Subcontrato, Tarea
 
 from .forms import (
     CategoriaMaterialForm,
@@ -11,35 +24,49 @@ from .forms import (
     RefEquipoForm,
     RubroForm,
     SubrubroForm,
+    TipoDolarForm,
     TipoMaterialForm,
     UnidadForm,
 )
 
 
+def _get_totales(company):
+    return {
+        "ref_equipos": RefEquipo.objects.filter(company=company).count(),
+        "rubros": Rubro.objects.filter(company=company).count(),
+        "subrubros": Subrubro.objects.filter(company=company).count(),
+        "unidades": Unidad.objects.filter(company=company).count(),
+        "tipos_material": TipoMaterial.objects.filter(company=company).count(),
+        "categorias_material": CategoriaMaterial.objects.filter(company=company).count(),
+        "equipos": Equipo.objects.filter(company=company).count(),
+        "materiales": Material.objects.filter(company=company).count(),
+        "mano_de_obra": ManoDeObra.objects.filter(company=company).count(),
+        "subcontratos": Subcontrato.objects.filter(company=company).count(),
+        "mezclas": Mezcla.objects.filter(company=company).count(),
+        "lotes": Lote.objects.filter(company=company).count(),
+        "tareas": Tarea.objects.filter(company=company).count(),
+        "proveedores": Proveedor.objects.filter(company=company).count(),
+        "tipos_dolar": TipoDolar.objects.filter(company=company).count(),
+    }
+
+
 @login_required
 def dashboard(request):
-    """
-    Panel de control básico del sistema de presupuestos.
-    Todos los totales son por request.company.
-    """
+    """Panel general: acceso a Índice, Tareas y Presupuesto."""
+    return render(request, "general/dashboard.html")
+
+
+@login_required
+def indice(request):
+    """Catálogos generales (antes Catálogos generales)."""
     company = request.company
-    contexto = {
-        "totales": {
-            "ref_equipos": RefEquipo.objects.filter(company=company).count(),
-            "rubros": Rubro.objects.filter(company=company).count(),
-            "subrubros": Subrubro.objects.filter(company=company).count(),
-            "unidades": Unidad.objects.filter(company=company).count(),
-            "tipos_material": TipoMaterial.objects.filter(company=company).count(),
-            "categorias_material": CategoriaMaterial.objects.filter(company=company).count(),
-            "equipos": Equipo.objects.filter(company=company).count(),
-            "materiales": Material.objects.filter(company=company).count(),
-            "mano_de_obra": ManoDeObra.objects.filter(company=company).count(),
-            "subcontratos": Subcontrato.objects.filter(company=company).count(),
-            "mezclas": Mezcla.objects.filter(company=company).count(),
-            "proveedores": Proveedor.objects.filter(company=company).count(),
-        }
-    }
-    return render(request, "general/dashboard.html", contexto)
+    return render(request, "general/indice.html", {"totales": _get_totales(company)})
+
+
+@login_required
+def presupuesto(request):
+    """Placeholder para módulo de presupuestos."""
+    return render(request, "general/presupuesto.html")
 
 
 @login_required
@@ -467,4 +494,115 @@ def proveedor_delete(request, pk):
         request,
         "general/confirm_delete.html",
         {"object": proveedor, "cancel_url": "general:proveedor_list"},
+    )
+
+
+@login_required
+def tipo_dolar_list(request):
+    company = request.company
+    if request.method == "POST":
+        form = TipoDolarForm(request.POST, request=request)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
+            return redirect("general:tipo_dolar_list")
+    else:
+        form = TipoDolarForm(request=request)
+
+    tipos = TipoDolar.objects.filter(company=company)
+    return render(
+        request,
+        "general/tipo_dolar_list.html",
+        {"tipos": tipos, "form": form},
+    )
+
+
+@login_required
+def tipo_dolar_edit(request, pk):
+    company = request.company
+    tipo = get_object_or_404(TipoDolar, pk=pk, company=company)
+    if request.method == "POST":
+        form = TipoDolarForm(request.POST, instance=tipo, request=request)
+        if form.is_valid():
+            form.save()
+            return redirect("general:tipo_dolar_list")
+    else:
+        form = TipoDolarForm(instance=tipo, request=request)
+
+    tipos = TipoDolar.objects.filter(company=company)
+    return render(
+        request,
+        "general/tipo_dolar_list.html",
+        {"tipos": tipos, "form": form, "editing": tipo},
+    )
+
+
+@login_required
+def tipo_dolar_delete(request, pk):
+    tipo = get_object_or_404(TipoDolar, pk=pk, company=request.company)
+    if request.method == "POST":
+        tipo.delete()
+        return redirect("general:tipo_dolar_list")
+    return render(
+        request,
+        "general/confirm_delete.html",
+        {"object": tipo, "cancel_url": "general:tipo_dolar_list"},
+    )
+
+
+@login_required
+def tabla_dolar(request):
+    """Tabla de cotizaciones: fecha + columnas por tipo de dólar."""
+    company = request.company
+    tipos = TipoDolar.objects.filter(company=company).order_by("nombre")
+
+    if request.method == "POST":
+        fecha_str = request.POST.get("fecha")
+        if fecha_str:
+            from datetime import datetime
+            try:
+                fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+                for tipo in tipos:
+                    val = request.POST.get(f"tipo_{tipo.pk}")
+                    if val is not None and val.strip() != "":
+                        try:
+                            valor = Decimal(val.strip().replace(",", "."))
+                            CotizacionDolar.objects.update_or_create(
+                                company=company,
+                                fecha=fecha,
+                                tipo=tipo,
+                                defaults={"valor": valor},
+                            )
+                        except (ValueError, InvalidOperation):
+                            pass
+                return redirect("general:tabla_dolar")
+            except ValueError:
+                pass
+
+    from django.db.models import Min
+    fechas = CotizacionDolar.objects.filter(company=company).values_list(
+        "fecha", flat=True
+    ).distinct().order_by("-fecha")[:200]  # últimas 200 fechas
+
+    cotizacion_por_fecha = {}
+    for c in CotizacionDolar.objects.filter(
+        company=company, fecha__in=fechas
+    ).select_related("tipo"):
+        if c.fecha not in cotizacion_por_fecha:
+            cotizacion_por_fecha[c.fecha] = {}
+        cotizacion_por_fecha[c.fecha][c.tipo_id] = c.valor
+
+    rows = []
+    for fecha in fechas:
+        valores = [cotizacion_por_fecha.get(fecha, {}).get(t.pk) for t in tipos]
+        rows.append({"fecha": fecha, "valores": valores})
+
+    return render(
+        request,
+        "general/tabla_dolar.html",
+        {
+            "tipos": tipos,
+            "rows": rows,
+        },
     )

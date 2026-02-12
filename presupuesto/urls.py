@@ -17,12 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from recursos.views import lote_list
+
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # tusaas.com/login -> selector de empresa tras login
     path("login/", include("usuarios.urls")),
-    # Vista principal del sistema
     path("", include("general.urls")),
-    # Recursos (materiales, mano de obra, subcontratos, etc.)
+    path("tareas/", lote_list, name="tareas"),
     path("recursos/", include("recursos.urls")),
 ]
