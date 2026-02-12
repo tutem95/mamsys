@@ -4,6 +4,7 @@ from .models import (
     CategoriaMaterial,
     CotizacionDolar,
     Equipo,
+    Obra,
     Proveedor,
     RefEquipo,
     Rubro,
@@ -125,4 +126,27 @@ class TipoDolarForm(forms.ModelForm):
     def __init__(self, *args, request=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._request = request
+
+
+class ObraForm(forms.ModelForm):
+    class Meta:
+        model = Obra
+        fields = ["nombre", "direccion", "pisos", "m2_construibles", "m2_vendibles", "valor_terreno"]
+        widgets = {
+            "nombre": forms.TextInput(attrs={"placeholder": "Ej: Edificio Centro"}),
+            "direccion": forms.TextInput(attrs={"placeholder": "Calle, número, ciudad"}),
+            "pisos": forms.TextInput(attrs={"placeholder": "Ej: PB + 2 pisos"}),
+            "m2_construibles": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "m2_vendibles": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "valor_terreno": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+        }
+
+    def __init__(self, *args, request=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._request = request
+        self.fields["direccion"].required = False
+        self.fields["pisos"].required = False
+        self.fields["m2_construibles"].required = False
+        self.fields["m2_vendibles"].required = False
+        self.fields["valor_terreno"].required = False
 

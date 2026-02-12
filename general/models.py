@@ -239,3 +239,33 @@ class CotizacionDolar(models.Model):
 
     def __str__(self):
         return f"{self.fecha} {self.tipo.nombre}: {self.valor}"
+
+
+class Obra(models.Model):
+    """Obra/proyecto: nombre, ubicación, superficie y valor de terreno."""
+    nombre = models.CharField(max_length=200)
+    direccion = models.CharField(max_length=300, blank=True)
+    pisos = models.CharField(max_length=100, blank=True, help_text="Ej: PB + 2 pisos")
+    m2_construibles = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    m2_vendibles = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
+    valor_terreno = models.DecimalField(
+        max_digits=14, decimal_places=4, null=True, blank=True
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name="obras",
+    )
+
+    class Meta:
+        verbose_name = "Obra"
+        verbose_name_plural = "Obras"
+        ordering = ["nombre"]
+        unique_together = ("company", "nombre")
+
+    def __str__(self):
+        return self.nombre

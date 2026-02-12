@@ -126,8 +126,43 @@ body {
     text-decoration: none;
 }
 
+.site-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.site-sidebar {
+    width: 180px;
+    flex-shrink: 0;
+    background: #f8fafc;
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-link {
+    display: block;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.sidebar-link:hover {
+    background: #e2e8f0;
+    color: var(--accent);
+    text-decoration: none;
+}
+
 .site-main {
     flex: 1;
+    min-width: 0;
 }
 
 .site-footer {
@@ -359,6 +394,71 @@ tbody tr:hover {
 
 .list-item a:hover {
     color: var(--accent);
+}
+
+/* Lista de presupuestos - moderna */
+.presupuesto-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.presupuesto-list-item {
+    border-bottom: 1px solid var(--border);
+}
+
+.presupuesto-list-item:last-child {
+    border-bottom: none;
+}
+
+.presupuesto-list-link {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 16px 0;
+    color: inherit;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+}
+
+.presupuesto-list-link:hover {
+    color: var(--accent);
+}
+
+.presupuesto-list-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.presupuesto-list-meta {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.presupuesto-list-total {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    min-width: 80px;
+    text-align: right;
+}
+
+@media (max-width: 520px) {
+    .presupuesto-list-link {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .presupuesto-list-name {
+        flex: 1 1 100%;
+    }
+    .presupuesto-list-meta {
+        order: 2;
+    }
+    .presupuesto-list-total {
+        order: 2;
+    }
 }
 
 /* Grids */

@@ -11,10 +11,6 @@
     </header>
 
     <section class="panel-cards">
-        <a href="{% url 'general:tabla_dolar' %}" class="panel-card panel-card-dolar">
-            <h2>Tabla de Dólar</h2>
-            <p>Cotizaciones por fecha y tipo (Oficial, CCL, etc.).</p>
-        </a>
         <a href="{% url 'general:indice' %}" class="panel-card">
             <h2>Índice</h2>
             <p>Catálogos generales: rubros, subrubros, unidades, equipos, proveedores y más.</p>
@@ -23,9 +19,13 @@
             <h2>Tareas</h2>
             <p>Recursos económicos: materiales, mano de obra, subcontratos, mezclas y lotes.</p>
         </a>
-        <a href="{% url 'general:presupuesto' %}" class="panel-card">
+        <a href="{% url 'presupuestos:presupuesto_list' %}" class="panel-card">
             <h2>Presupuesto</h2>
-            <p>Construcción de presupuestos por proyecto. (En desarrollo)</p>
+            <p>Construcción de presupuestos por proyecto. Obra, rubros, subrubros y tareas.</p>
+        </a>
+        <a href="{% url 'general:tabla_dolar' %}" class="panel-card panel-card-dolar">
+            <h2>Tabla de Dólar</h2>
+            <p>Cotizaciones por fecha y tipo (Oficial, CCL, etc.).</p>
         </a>
     </section>
 </div>

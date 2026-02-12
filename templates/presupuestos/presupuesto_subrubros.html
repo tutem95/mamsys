@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Subrubros · {{ rubro.nombre }}{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div class="title-block">
+            <h1>{{ presupuesto.obra.nombre }} · {{ rubro.nombre }}</h1>
+            <p>{{ presupuesto.instancia }} · {{ presupuesto.fecha|date:"d/m/Y" }}</p>
+        </div>
+        <a class="link link-back" href="{% url 'presupuestos:presupuesto_rubros' presupuesto.pk %}">← Volver a rubros</a>
+    </header>
+
+    {% if chart_data %}
+    <section class="card" style="margin-bottom:24px;">
+        <h2 style="margin:0 0 16px;">Distribución por subrubro</h2>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:24px;">
+            <div style="flex:0 0 auto;">
+                <canvas id="subrubrosPieChart" width="240" height="240"></canvas>
+            </div>
+            <div style="flex:1; min-width:180px;">
+                <ul class="list" style="border:none; margin:0;">
+                    {% for item in chart_data %}
+                    <li style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:0.9rem;">
+                        <span class="pie-legend-dot" data-color-idx="{{ forloop.counter0 }}"></span>
+                        <span>{{ item.label }}</span>
+                        <span class="num" style="margin-left:auto; font-weight:600;">{{ item.percentage }}%</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="card">
+        <h2 style="margin:0 0 16px;">Subrubros · {{ rubro.nombre }}</h2>
+        {% if rubro_total is not None %}
+        <p style="font-size:1rem; font-weight:600; margin-bottom:16px;">Total rubro: <span class="num">{{ rubro_total|floatformat:2 }} USD</span></p>
+        {% endif %}
+        {% if subrubros_con_total %}
+        <ul class="list" style="border:none;">
+            {% for subrubro, total_usd in subrubros_con_total %}
+            <li class="list-item" style="border-bottom:1px solid var(--border);">
+                <a href="{% url 'presupuestos:presupuesto_tareas' presupuesto.pk rubro.pk subrubro.pk %}">
+                    <span>{{ subrubro.nombre }}</span>
+                    <span class="num">{% if total_usd %}{{ total_usd|floatformat:2 }} USD{% else %}-{% endif %}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p style="font-size:0.9rem; color:var(--text-muted);">No hay subrubros.</p>
+        {% endif %}
+    </section>
+</div>
+
+{% if chart_data %}
+{{ chart_data|json_script:"chart-data" }}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    var PALETTE = ['#2563eb', '#0ea5e9', '#06b6d4', '#10b981', '#84cc16', '#eab308', '#f97316', '#ef4444', '#8b5cf6', '#ec4899'];
+    var chartData = JSON.parse(document.getElementById('chart-data').textContent);
+    if (!chartData || chartData.length === 0) return;
+
+    var ctx = document.getElementById('subrubrosPieChart');
+    if (!ctx) return;
+
+    var labels = chartData.map(function(d) { return d.label + ' (' + d.percentage + '%)'; });
+    var values = chartData.map(function(d) { return d.value; });
+    var colors = chartData.map(function(_, i) { return PALETTE[i % PALETTE.length]; });
+
+    new Chart(ctx.getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                borderColor: '#fff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            var item = chartData[ctx.dataIndex];
+                            return item ? item.label + ': ' + item.percentage + '%' : '';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    document.querySelectorAll('.pie-legend-dot').forEach(function(el) {
+        var idx = parseInt(el.getAttribute('data-color-idx'), 10);
+        el.style.background = PALETTE[idx % PALETTE.length];
+        el.style.display = 'inline-block';
+        el.style.width = '12px';
+        el.style.height = '12px';
+        el.style.borderRadius = '3px';
+    });
+})();
+</script>
+{% endblock %}
+{% endif %}
+{% endblock %}

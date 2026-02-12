@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     # Apps de dominio
     'general',
     'recursos',
+    'presupuestos',
     # Gestión de usuarios y autenticación UI
     'usuarios',
 ]

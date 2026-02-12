@@ -604,6 +604,62 @@ class Tarea(models.Model):
             total += c
         return total
 
+    def costo_materiales_mezcla(self):
+        """Costo de materiales y mezclas (precio unitario de la tarea)."""
+        total = Decimal("0")
+        for rec in self.recursos.all():
+            if rec.get_tipo() in ("material", "mezcla"):
+                total += rec.costo_total()
+        return total
+
+    def costo_mo_subcontratos(self):
+        """Costo de mano de obra y subcontratos (precio unitario de la tarea)."""
+        total = Decimal("0")
+        for rec in self.recursos.all():
+            if rec.get_tipo() in ("mano_de_obra", "subcontrato"):
+                total += rec.costo_total()
+        return total
+
+    def costo_materiales_mezcla_usd_usando_cotizacion(self, cotizacion, cantidad=Decimal("1")):
+        """Costo materiales/mezcla en USD, usando cotización externa. cantidad multiplica."""
+        total_usd = Decimal("0")
+        for rec in self.recursos.all():
+            if rec.get_tipo() in ("material", "mezcla"):
+                c = rec.costo_total_usd_con_cotizacion(cotizacion)
+                if c is None:
+                    return None
+                total_usd += c
+        return total_usd * cantidad
+
+    def costo_mo_subcontratos_usd_usando_cotizacion(self, cotizacion, cantidad=Decimal("1")):
+        """Costo MO/subcontratos en USD, usando cotización externa. cantidad multiplica."""
+        total_usd = Decimal("0")
+        for rec in self.recursos.all():
+            if rec.get_tipo() in ("mano_de_obra", "subcontrato"):
+                c = rec.costo_total_usd_con_cotizacion(cotizacion)
+                if c is None:
+                    return None
+                total_usd += c
+        return total_usd * cantidad
+
+    def get_unidad(self):
+        """Unidad de medida: del primer recurso que tenga unidad."""
+        for rec in self.recursos.select_related(
+            "material__unidad_de_venta",
+            "mano_de_obra__unidad_de_venta",
+            "subcontrato__unidad_de_venta",
+            "mezcla__unidad_de_mezcla",
+        ):
+            if rec.material_id:
+                return rec.material.unidad_de_venta.nombre if rec.material.unidad_de_venta_id else None
+            if rec.mano_de_obra_id:
+                return rec.mano_de_obra.unidad_de_venta.nombre if rec.mano_de_obra.unidad_de_venta_id else None
+            if rec.subcontrato_id:
+                return rec.subcontrato.unidad_de_venta.nombre if rec.subcontrato.unidad_de_venta_id else None
+            if rec.mezcla_id:
+                return rec.mezcla.unidad_de_mezcla.nombre if rec.mezcla.unidad_de_mezcla_id else None
+        return "-"
+
 
 class TareaRecurso(models.Model):
     """Recurso que compone una tarea: material, mano de obra, subcontrato o mezcla."""
@@ -746,4 +802,17 @@ class TareaRecurso(models.Model):
         cotiz = lote.get_cotizacion_usd()
         if cotiz and cotiz > 0:
             return total / cotiz
+        return None
+
+    def costo_total_usd_con_cotizacion(self, cotizacion):
+        """Costo en USD usando cotización externa (para presupuestos)."""
+        total = self.costo_total()
+        if total == 0:
+            return Decimal("0")
+        lote = self.tarea.lote
+        moneda = self._get_moneda(lote)
+        if moneda == "USD":
+            return total
+        if cotizacion and cotizacion > 0:
+            return total / cotizacion
         return None

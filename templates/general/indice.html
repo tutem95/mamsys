@@ -57,6 +57,12 @@
                 </a>
             </li>
             <li class="list-item">
+                <a href="{% url 'general:obra_list' %}">
+                    <span>Obras</span>
+                    <span>{{ totales.obras }}</span>
+                </a>
+            </li>
+            <li class="list-item">
                 <a href="{% url 'general:unidad_list' %}">
                     <span>Unidades</span>
                     <span>{{ totales.unidades }}</span>

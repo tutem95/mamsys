@@ -25,4 +25,5 @@ urlpatterns = [
     path("", include("general.urls")),
     path("tareas/", lote_list, name="tareas"),
     path("recursos/", include("recursos.urls")),
+    path("presupuestos/", include("presupuestos.urls")),
 ]

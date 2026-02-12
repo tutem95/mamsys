@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Obras · Presupuesto{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div>
+            <h1>Obras</h1>
+            <p>Proyectos con nombre, dirección, pisos, M2 y valor de terreno.</p>
+        </div>
+        <a class="link link-back" href="{% url 'general:indice' %}">← Volver al índice</a>
+    </header>
+
+    <section class="layout">
+        <section class="card">
+            <h2>{% if editing %}Editar obra{% else %}Nueva obra{% endif %}</h2>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Listado</h2>
+            {% if obras %}
+                <table>
+                    <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nombre</th>
+                        <th>Dirección</th>
+                        <th>Pisos</th>
+                        <th class="num">M2 Const.</th>
+                        <th class="num">M2 Vend.</th>
+                        <th class="num">Valor terreno</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for obra in obras %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ obra.nombre }}</td>
+                            <td>{{ obra.direccion|default:"-" }}</td>
+                            <td>{{ obra.pisos|default:"-" }}</td>
+                            <td class="num">{% if obra.m2_construibles %}{{ obra.m2_construibles|floatformat:2 }}{% else %}-{% endif %}</td>
+                            <td class="num">{% if obra.m2_vendibles %}{{ obra.m2_vendibles|floatformat:2 }}{% else %}-{% endif %}</td>
+                            <td class="num">{% if obra.valor_terreno %}{{ obra.valor_terreno|floatformat:2 }}{% else %}-{% endif %}</td>
+                            <td class="actions">
+                                <a href="{% url 'general:obra_edit' obra.pk %}" class="btn-link">Editar</a>
+                                |
+                                <form action="{% url 'general:obra_delete' obra.pk %}" method="post" style="display:inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar esta obra?');">Eliminar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="font-size:0.9rem; color:var(--text-muted);">No hay obras cargadas.</p>
+            {% endif %}
+        </section>
+    </section>
+</div>
+{% endblock %}

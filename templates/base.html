@@ -36,9 +36,22 @@
         </div>
     </header>
     {% endblock %}
-    <main class="site-main">
-        {% block content %}{% endblock %}
-    </main>
+    <div class="site-body">
+        {% block site_sidebar %}
+        <aside class="site-sidebar">
+            <nav class="sidebar-nav">
+                <a href="{% url 'general:dashboard' %}" class="sidebar-link">Panel</a>
+                <a href="{% url 'general:indice' %}" class="sidebar-link">Índice</a>
+                <a href="{% url 'tareas' %}" class="sidebar-link">Tareas</a>
+                <a href="{% url 'presupuestos:presupuesto_list' %}" class="sidebar-link">Presupuesto</a>
+                <a href="{% url 'general:tabla_dolar' %}" class="sidebar-link">Tabla Dólar</a>
+            </nav>
+        </aside>
+        {% endblock %}
+        <main class="site-main">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
     {% block site_footer %}
     <footer class="site-footer">
         mamsys @ 2026

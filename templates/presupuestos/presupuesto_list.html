@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Presupuestos · Presupuesto{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div class="title-block">
+            <h1>Presupuestos</h1>
+            <p>Presupuestos armados por obra e instancia.</p>
+        </div>
+        <a href="{% url 'general:dashboard' %}" class="link-back">← Volver al panel</a>
+        <a href="{% url 'presupuestos:presupuesto_create' %}" class="btn btn-primary" style="margin-left:12px;">+ Agregar presupuesto</a>
+    </header>
+
+    <section class="card">
+        {% if presupuestos %}
+        <ul class="presupuesto-list">
+            {% for p in presupuestos %}
+            <li class="presupuesto-list-item">
+                <a href="{% url 'presupuestos:presupuesto_rubros' p.pk %}" class="presupuesto-list-link">
+                    <span class="presupuesto-list-name">{{ p.obra.nombre }}</span>
+                    <span class="presupuesto-list-meta">{{ p.fecha|date:"d/m/Y" }} · {{ p.instancia }}</span>
+                    <span class="presupuesto-list-total">{% if p.total_usd is not None %}{{ p.total_usd|floatformat:2 }} USD{% else %}-{% endif %}</span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p style="font-size:0.9rem; color:var(--text-muted);">No hay presupuestos. Creá uno para empezar.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

@@ -7,6 +7,7 @@ from general.models import (
     CategoriaMaterial,
     CotizacionDolar,
     Equipo,
+    Obra,
     Proveedor,
     RefEquipo,
     Rubro,
@@ -20,6 +21,7 @@ from recursos.models import Lote, ManoDeObra, Material, Mezcla, Subcontrato, Tar
 from .forms import (
     CategoriaMaterialForm,
     EquipoForm,
+    ObraForm,
     ProveedorForm,
     RefEquipoForm,
     RubroForm,
@@ -47,6 +49,7 @@ def _get_totales(company):
         "tareas": Tarea.objects.filter(company=company).count(),
         "proveedores": Proveedor.objects.filter(company=company).count(),
         "tipos_dolar": TipoDolar.objects.filter(company=company).count(),
+        "obras": Obra.objects.filter(company=company).count(),
     }
 
 
@@ -65,8 +68,9 @@ def indice(request):
 
 @login_required
 def presupuesto(request):
-    """Placeholder para módulo de presupuestos."""
-    return render(request, "general/presupuesto.html")
+    """Redirige al módulo de presupuestos."""
+    from django.shortcuts import redirect
+    return redirect("presupuestos:presupuesto_list")
 
 
 @login_required
@@ -494,6 +498,60 @@ def proveedor_delete(request, pk):
         request,
         "general/confirm_delete.html",
         {"object": proveedor, "cancel_url": "general:proveedor_list"},
+    )
+
+
+@login_required
+def obra_list(request):
+    company = request.company
+    if request.method == "POST":
+        form = ObraForm(request.POST, request=request)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
+            return redirect("general:obra_list")
+    else:
+        form = ObraForm(request=request)
+
+    obras = Obra.objects.filter(company=company)
+    return render(
+        request,
+        "general/obra_list.html",
+        {"obras": obras, "form": form},
+    )
+
+
+@login_required
+def obra_edit(request, pk):
+    company = request.company
+    obra = get_object_or_404(Obra, pk=pk, company=company)
+    if request.method == "POST":
+        form = ObraForm(request.POST, instance=obra, request=request)
+        if form.is_valid():
+            form.save()
+            return redirect("general:obra_list")
+    else:
+        form = ObraForm(instance=obra, request=request)
+
+    obras = Obra.objects.filter(company=company)
+    return render(
+        request,
+        "general/obra_list.html",
+        {"obras": obras, "form": form, "editing": obra},
+    )
+
+
+@login_required
+def obra_delete(request, pk):
+    obra = get_object_or_404(Obra, pk=pk, company=request.company)
+    if request.method == "POST":
+        obra.delete()
+        return redirect("general:obra_list")
+    return render(
+        request,
+        "general/confirm_delete.html",
+        {"object": obra, "cancel_url": "general:obra_list"},
     )
 
 

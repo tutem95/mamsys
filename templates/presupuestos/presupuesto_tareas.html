@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Tareas · {{ subrubro.nombre }}{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div class="title-block">
+            <h1>{{ presupuesto.obra.nombre }} · {{ rubro.nombre }} · {{ subrubro.nombre }}</h1>
+            <p>{{ presupuesto.instancia }} · Tareas con materiales, MO y subcontratos</p>
+        </div>
+        <a class="link link-back" href="{% url 'presupuestos:presupuesto_subrubros' presupuesto.pk rubro.pk %}">← Volver a subrubros</a>
+    </header>
+
+    <section class="card">
+        <h2 style="margin:0 0 16px;">Tareas · {{ subrubro.nombre }}</h2>
+        {% if subrubro_total is not None %}
+        <p style="font-size:1rem; font-weight:600; margin-bottom:16px;">Total subrubro: <span class="num">{{ subrubro_total|floatformat:2 }} USD</span></p>
+        {% endif %}
+        {% if items %}
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                <tr>
+                    <th>Tarea</th>
+                    <th>Unidad</th>
+                    <th class="num">Cantidad</th>
+                    <th class="num">Mat. / Mezcla</th>
+                    <th class="num">MO / Subcontr.</th>
+                    <th class="num">Total USD</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.tarea.nombre }}</td>
+                    <td>{{ item.tarea.get_unidad }}</td>
+                    <td class="num">{{ item.cantidad|floatformat:2 }}</td>
+                    <td class="num">{% if item.total_materiales_mezcla_usd is not None %}{{ item.total_materiales_mezcla_usd|floatformat:2 }}{% else %}-{% endif %}</td>
+                    <td class="num">{% if item.total_mo_subcontratos_usd is not None %}{{ item.total_mo_subcontratos_usd|floatformat:2 }}{% else %}-{% endif %}</td>
+                    <td class="num">{% if item.total_general_usd is not None %}{{ item.total_general_usd|floatformat:2 }}{% else %}-{% endif %}</td>
+                    <td>
+                        <form action="{% url 'presupuestos:presupuesto_item_delete' presupuesto.pk item.pk %}" method="post" style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Quitar esta tarea?');">Quitar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p style="font-size:0.9rem; color:var(--text-muted);">No hay tareas. Agregá una abajo.</p>
+        {% endif %}
+
+        <hr style="margin:20px 0; border:none; border-top:1px solid var(--border);">
+        <h3 style="margin:0 0 12px;">Agregar tarea</h3>
+        <form method="post" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+            {% csrf_token %}
+            <div class="field" style="margin-bottom:0;">
+                <label for="id_tarea">Tarea</label>
+                {{ form.tarea }}
+            </div>
+            <div class="field" style="margin-bottom:0;">
+                <label for="id_cantidad">Cantidad</label>
+                {{ form.cantidad }}
+            </div>
+            <button type="submit" class="btn btn-primary">Agregar</button>
+        </form>
+        {% if not form.fields.tarea.queryset %}
+        <p class="field-hint" style="margin-top:8px;">No hay más tareas en este rubro/subrubro del lote, o ya están todas agregadas.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
