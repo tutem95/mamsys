@@ -1,19 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Unidades · Presupuesto{% endblock %}
+{% block title %}Ref. Equipos · Presupuesto{% endblock %}
 
 {% block content %}
 <main class="shell">
     <header>
         <div>
-            <h1>Unidades</h1>
-            <p>Definí las unidades de medida usadas en materiales, mano de obra y subcontratos.</p>
+            <h1>Ref. Equipos</h1>
+            <p>Subcategorías de equipos (como Subrubro es a Rubro). Cada Ref. Equipo pertenece a un equipo.</p>
         </div>
         <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
     </header>
 
     <section class="layout">
         <section class="card">
-            <h2>{% if editing %}Editar unidad{% else %}Nueva unidad{% endif %}</h2>
+            <h2>{% if editing %}Editar Ref. Equipo{% else %}Nuevo Ref. Equipo{% endif %}</h2>
             <form method="post">
                 {% csrf_token %}
                 {{ form.as_p }}
@@ -23,26 +23,28 @@
 
         <section class="card">
             <h2>Listado</h2>
-            {% if unidades %}
+            {% if ref_equipos %}
                 <table>
                     <thead>
                     <tr>
                         <th>#</th>
+                        <th>Equipo</th>
                         <th>Nombre</th>
                         <th></th>
                     </tr>
                     </thead>
                     <tbody>
-                    {% for unidad in unidades %}
+                    {% for ref in ref_equipos %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
-                            <td>{{ unidad.nombre }}</td>
+                            <td>{{ ref.equipo.nombre }}</td>
+                            <td>{{ ref.nombre }}</td>
                             <td class="actions">
-                                <a href="{% url 'general:unidad_edit' unidad.pk %}" class="btn-link">Editar</a>
+                                <a href="{% url 'general:ref_equipo_edit' ref.pk %}" class="btn-link">Editar</a>
                                 |
-                                <form action="{% url 'general:unidad_delete' unidad.pk %}" method="post" style="display:inline">
+                                <form action="{% url 'general:ref_equipo_delete' ref.pk %}" method="post" style="display:inline">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar esta unidad?');">Eliminar</button>
+                                    <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este Ref. Equipo?');">Eliminar</button>
                                 </form>
                             </td>
                         </tr>
@@ -50,7 +52,7 @@
                     </tbody>
                 </table>
             {% else %}
-                <p style="font-size:0.9rem; color:var(--text-muted);">No hay unidades cargadas.</p>
+                <p style="font-size:0.9rem; color:var(--text-muted);">No hay Ref. Equipos cargados.</p>
             {% endif %}
         </section>
     </section>

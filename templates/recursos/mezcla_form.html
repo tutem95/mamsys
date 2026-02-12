@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Editar{% else %}Nueva{% endif %} mezcla · Presupuesto{% endblock %}
+
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>{% if editing %}Editar mezcla{% else %}Nueva mezcla{% endif %}</h1>
+        </div>
+        <a class="link link-back" href="{% url 'recursos:mezcla_list' %}">← Volver a mezclas</a>
+    </header>
+
+    <section class="card">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'recursos:mezcla_list' %}" class="btn-link">Cancelar</a>
+        </form>
+    </section>
+</main>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Elegir empresa · Presupuesto{% endblock %}
+{% block body_class %}body-center{% endblock %}
+
+{% block content %}
+<main class="card" style="max-width:420px;">
+    <h1>Elegir empresa</h1>
+    <p>Con qué empresa querés trabajar en esta sesión.</p>
+
+    <form method="post" action="">
+        {% csrf_token %}
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            {% for m in memberships %}
+            <button type="submit" name="company_id" value="{{ m.company_id }}" style="display:block; width:100%; text-align:left; padding:12px 14px; border-radius:8px; border:1px solid var(--border); background:white; color:var(--text); font-size:0.95rem; cursor:pointer; font-family:inherit;">
+                {{ m.company.nombre }}
+            </button>
+            {% endfor %}
+        </div>
+    </form>
+
+    <div class="footer" style="margin-top:16px;">
+        <a href="{% url 'usuarios:logout' %}">Cerrar sesión</a>
+    </div>
+</main>
+{% endblock %}

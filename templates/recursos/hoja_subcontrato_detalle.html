@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Hoja {{ hoja.nombre }} · Presupuesto{% endblock %}
+
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>Hoja: {{ hoja.nombre }}</h1>
+            <p>Detalle de precios de subcontratos en esta hoja.</p>
+        </div>
+        <a class="link link-back" href="{% url 'recursos:hoja_subcontrato_list' %}">← Volver a hojas</a>
+        <a href="{% url 'recursos:subcontrato_list' %}?hoja={{ hoja.pk }}" class="btn btn-primary">Ver/editar hoja</a>
+    </header>
+
+    <section class="card">
+        {% if detalles %}
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Rubro</th>
+                    <th>Subrubro</th>
+                    <th>Tarea</th>
+                    <th>Proveedor</th>
+                    <th class="num">Cant. UV</th>
+                    <th>UV</th>
+                    <th class="num">Precio UV</th>
+                    <th class="num">Precio UA</th>
+                    <th>Moneda</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for detalle in detalles %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ detalle.subcontrato.rubro }}</td>
+                    <td>{{ detalle.subcontrato.subrubro }}</td>
+                    <td>{{ detalle.subcontrato.tarea }}</td>
+                    <td>{{ detalle.subcontrato.proveedor }}</td>
+                    <td class="num">{{ detalle.cantidad_por_unidad_venta|floatformat:2 }}</td>
+                    <td>{{ detalle.subcontrato.unidad_de_venta }}</td>
+                    <td class="num">{{ detalle.precio_unidad_venta|floatformat:2 }}</td>
+                    <td class="num">{{ detalle.precio_por_unidad_analisis|floatformat:2 }}</td>
+                    <td>{{ detalle.moneda }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="font-size:0.9rem; color:var(--text-muted);">Esta hoja no tiene subcontratos.</p>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

@@ -1,0 +1,330 @@
+/* Presupuesto - Tema claro: fondo blanco, texto negro, títulos azul oscuro */
+:root {
+    --bg: #ffffff;
+    --bg-card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1a1a1a;
+    --text-muted: #64748b;
+    --title: #1e3a5f;
+    --accent: #2563eb;
+    --accent-soft: #3b82f6;
+    --danger: #dc2626;
+    --danger-soft: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+/* Títulos en azul oscuro */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--title);
+    font-weight: 600;
+}
+
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.1rem; }
+
+/* Shell contenedor principal */
+.shell {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 28px 24px 40px;
+}
+
+/* Layout centrado para pantallas de login/confirmación */
+.body-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px 16px;
+}
+
+/* Cards */
+.card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Header de página */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.title-block h1,
+header h1 {
+    margin: 0 0 4px;
+}
+
+.title-block p,
+header p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* Enlaces */
+a, .link {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover, .link:hover {
+    text-decoration: underline;
+}
+
+.link-back {
+    font-size: 0.9rem;
+}
+
+/* Botones */
+.btn, .btn-primary {
+    border-radius: 8px;
+    border: none;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+    color: white;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.05);
+}
+
+.btn-link {
+    border: none;
+    background: none;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.btn-danger {
+    color: var(--danger);
+}
+
+/* Inputs */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"],
+select {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: inherit;
+    padding: 8px 10px;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent-soft);
+}
+
+/* Números: 2 decimales por defecto */
+input[type="number"] {
+    text-align: right;
+}
+
+/* Tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+th, td {
+    padding: 5px 8px;
+    border: 1px solid #1a1a1a;
+    text-align: left;
+}
+
+th {
+    font-weight: 600;
+    color: var(--title);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Filas alternadas: blanco, gris claro */
+tbody tr:nth-child(odd) {
+    background: #ffffff;
+}
+
+tbody tr:nth-child(even) {
+    background: #f1f5f9;
+}
+
+tbody tr:hover {
+    background: #e2e8f0 !important;
+}
+
+/* KPI / chips */
+.chip {
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--accent);
+}
+
+.pill {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #f8fafc;
+    color: var(--text-muted);
+}
+
+/* Listas */
+.list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.list-item a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.list-item a:hover {
+    color: var(--accent);
+}
+
+/* Grids */
+.grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr);
+    gap: 20px;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .grid, .layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Formularios */
+label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.field {
+    margin-bottom: 12px;
+}
+
+/* Errores */
+.errors {
+    background: #fef2f2;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 0.88rem;
+    color: var(--danger);
+}
+
+/* Footer */
+footer {
+    margin-top: 24px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Números: alineación derecha para columnas numéricas */
+.num, .num-cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Formularios as_p */
+form p {
+    margin: 0 0 12px;
+}
+
+form label {
+    display: block;
+    margin-bottom: 4px;
+}
+
+/* Acciones en tabla */
+.actions {
+    white-space: nowrap;
+    font-size: 0.88rem;
+}
+
+.actions form {
+    display: inline;
+}

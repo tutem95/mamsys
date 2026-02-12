@@ -1,65 +1,309 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Subcontratos · Presupuesto</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-<h1>Subcontratos</h1>
-<p>Servicios y trabajos tercerizados con sus precios por unidad.</p>
+{% extends "base.html" %}
+{% block title %}Subcontratos · Presupuesto{% endblock %}
 
-<p><a href="{% url 'general:dashboard' %}">← Volver al panel</a></p>
+{% block extra_css %}
+<style>
+    .filters th { padding-bottom: 6px; }
+    .filters input, .filters select { font-size: 0.85rem; }
+    .row-new { background: #f8fafc; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+</style>
+{% endblock %}
 
-<section>
-    <h2>{% if editing %}Editar subcontrato{% else %}Nuevo subcontrato{% endif %}</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Guardar</button>
-    </form>
-</section>
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>Subcontratos</h1>
+            <p>Hoja tipo Excel para editar y filtrar la lista de subcontratos.</p>
+            <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <label for="hoja-select" style="font-size:0.9rem; color:var(--text-muted);">Ver hoja:</label>
+            <select id="hoja-select" style="width:auto; min-width:180px; padding:6px 10px;">
+                <option value="">Precios actuales</option>
+                {% for h in hojas %}
+                    <option value="{{ h.pk }}" {% if hoja_seleccionada and hoja_seleccionada.pk == h.pk %}selected{% endif %}>{{ h.nombre }}</option>
+                {% endfor %}
+            </select>
+            {% if not modo_hoja %}
+            <button class="btn btn-primary" type="button" onclick="mostrarFilaNuevo();">+ Nuevo subcontrato</button>
+            {% else %}
+            <a href="{% url 'recursos:subcontrato_list' %}?hoja={{ hoja_seleccionada.pk }}&agregar=1" class="btn btn-primary">+ Agregar subcontrato a hoja</a>
+            {% endif %}
+            <a href="{% url 'recursos:hoja_subcontrato_list' %}" class="link" style="margin-left:8px;">Ver hojas de precios</a>
+        </div>
+    </header>
 
-<section>
-    <h2>Listado</h2>
-    {% if subcontratos %}
-        <table border="1" cellpadding="4">
-            <thead>
-            <tr>
-                <th>#</th>
-                <th>Descripción</th>
-                <th>Proveedor</th>
-                <th>Unidad análisis</th>
-                <th>Precio por unidad</th>
-                <th>Moneda</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for s in subcontratos %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ s.descripcion }}</td>
-                    <td>{{ s.proveedor }}</td>
-                    <td>{{ s.unidad_de_analisis }}</td>
-                    <td>{{ s.precio_por_unidad }}</td>
-                    <td>{{ s.moneda }}</td>
-                    <td>
-                        <a href="{% url 'recursos:subcontrato_edit' s.pk %}">Editar</a>
-                        |
-                        <form action="{% url 'recursos:subcontrato_delete' s.pk %}" method="post" style="display:inline">
-                            {% csrf_token %}
-                            <button type="submit" onclick="return confirm('¿Eliminar este subcontrato?');">Eliminar</button>
-                        </form>
-                    </td>
-                </tr>
+    <section class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <small style="color:var(--text-muted);">Filtrá por cualquiera de las columnas escribiendo en la fila de filtros.</small>
+            {% if hoja_seleccionada %}
+            <small style="color:var(--accent);">Editando hoja «{{ hoja_seleccionada.nombre }}».</small>
+            {% endif %}
+        </div>
+
+        <div style="overflow-x:auto;">
+            {% if modo_hoja %}
+            <div id="tabla-wrapper">
+            {% else %}
+            <form method="post" action="{% url 'recursos:subcontrato_bulk_update' %}" id="bulk-form">
+                {% csrf_token %}
+            {% endif %}
+                <table id="tabla-subcontratos">
+                    <thead>
+                    <tr>
+                        <th>{% if not modo_hoja %}<input type="checkbox" id="select-all">{% endif %}</th>
+                        <th>#</th>
+                        <th>Rubro</th>
+                        <th>Subrubro</th>
+                        <th>Tarea</th>
+                        <th>Proveedor</th>
+                        <th class="num">Cant. UV</th>
+                        <th>UV</th>
+                        <th class="num">Precio UV</th>
+                        <th class="num">Precio UA</th>
+                        <th>Moneda</th>
+                        <th></th>
+                    </tr>
+                    <tr class="filters">
+                        <th></th>
+                        <th></th>
+                        <th><input type="text" data-col="2" placeholder="Filtrar rubro"></th>
+                        <th><input type="text" data-col="3" placeholder="Filtrar subrubro"></th>
+                        <th><input type="text" data-col="4" placeholder="Filtrar tarea"></th>
+                        <th><input type="text" data-col="5" placeholder="Filtrar proveedor"></th>
+                        <th><input type="text" data-col="6" placeholder="Filtrar cant."></th>
+                        <th><input type="text" data-col="7" placeholder="Filtrar UV"></th>
+                        <th><input type="text" data-col="8" placeholder="Filtrar precio"></th>
+                        <th><input type="text" data-col="9" placeholder="Filtrar UA"></th>
+                        <th><input type="text" data-col="10" placeholder="Filtrar moneda"></th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% if subcontratos %}
+                        {% if modo_hoja %}
+                            {% for detalle in subcontratos %}
+                            <tr>
+                                <td></td>
+                                <td>{{ forloop.counter }}</td>
+                                {% if editing_hoja and editing_hoja.pk == detalle.pk %}
+                                <form method="post" action="{% url 'recursos:hoja_subcontrato_detalle_edit' hoja_seleccionada.pk detalle.pk %}">
+                                    {% csrf_token %}
+                                    <td>{{ detalle.subcontrato.rubro }}</td>
+                                    <td>{{ detalle.subcontrato.subrubro }}</td>
+                                    <td>{{ detalle.subcontrato.tarea }}</td>
+                                    <td>{{ detalle.subcontrato.proveedor }}</td>
+                                    <td>{{ form_hoja_detalle.cantidad_por_unidad_venta }}</td>
+                                    <td>{{ detalle.subcontrato.unidad_de_venta }}</td>
+                                    <td>{{ form_hoja_detalle.precio_unidad_venta }}</td>
+                                    <td class="num">{{ detalle.precio_por_unidad_analisis|floatformat:2 }}</td>
+                                    <td>{{ form_hoja_detalle.moneda }}</td>
+                                    <td class="actions">
+                                        <button type="submit" class="btn-link">Guardar</button> |
+                                        <a href="{% url 'recursos:subcontrato_list' %}?hoja={{ hoja_seleccionada.pk }}" class="btn-link">Cancelar</a>
+                                    </td>
+                                </form>
+                                {% else %}
+                                <td>{{ detalle.subcontrato.rubro }}</td>
+                                <td>{{ detalle.subcontrato.subrubro }}</td>
+                                <td>{{ detalle.subcontrato.tarea }}</td>
+                                <td>{{ detalle.subcontrato.proveedor }}</td>
+                                <td class="num">{{ detalle.cantidad_por_unidad_venta|floatformat:2 }}</td>
+                                <td>{{ detalle.subcontrato.unidad_de_venta }}</td>
+                                <td class="num">{{ detalle.precio_unidad_venta|floatformat:2 }}</td>
+                                <td class="num">{{ detalle.precio_por_unidad_analisis|floatformat:2 }}</td>
+                                <td>{{ detalle.moneda }}</td>
+                                <td class="actions">
+                                    <a href="{% url 'recursos:subcontrato_list' %}?hoja={{ hoja_seleccionada.pk }}&editar={{ detalle.pk }}" class="btn-link">Editar</a> |
+                                    <form action="{% url 'recursos:hoja_subcontrato_detalle_delete' hoja_seleccionada.pk detalle.pk %}" method="post" style="display:inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Quitar este subcontrato de la hoja?');">Quitar</button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            {% for subc in subcontratos %}
+                            <tr>
+                                <td><input type="checkbox" name="selected_ids" value="{{ subc.pk }}"></td>
+                                <td>{{ forloop.counter }}</td>
+                            {% if editing and editing.pk == subc.pk %}
+                                <form method="post" action="{% url 'recursos:subcontrato_edit' subc.pk %}">
+                                    {% csrf_token %}
+                                    <td>{{ form_edit.rubro }}</td>
+                                    <td>{{ form_edit.subrubro }}</td>
+                                    <td>{{ form_edit.tarea }}</td>
+                                    <td>{{ form_edit.proveedor }}</td>
+                                    <td>{{ form_edit.cantidad_por_unidad_venta }}</td>
+                                    <td>{{ form_edit.unidad_de_venta }}</td>
+                                    <td>{{ form_edit.precio_unidad_venta }}</td>
+                                    <td class="num">{{ editing.precio_por_unidad_analisis|floatformat:2 }}</td>
+                                    <td>{{ form_edit.moneda }}</td>
+                                    <td class="actions">
+                                        <button type="submit" class="btn-link">Guardar</button> |
+                                        <a href="{% url 'recursos:subcontrato_list' %}">Cancelar</a>
+                                    </td>
+                                </form>
+                            {% else %}
+                                <td>{{ subc.rubro }}</td>
+                                <td>{{ subc.subrubro }}</td>
+                                <td>{{ subc.tarea }}</td>
+                                <td>{{ subc.proveedor }}</td>
+                                <td class="num">{{ subc.cantidad_por_unidad_venta|floatformat:2 }}</td>
+                                <td>{{ subc.unidad_de_venta }}</td>
+                                <td class="num">{{ subc.precio_unidad_venta|floatformat:2 }}</td>
+                                <td class="num">{{ subc.precio_por_unidad_analisis|floatformat:2 }}</td>
+                                <td>{{ subc.moneda }}</td>
+                                <td class="actions">
+                                    <a href="{% url 'recursos:subcontrato_edit' subc.pk %}" class="btn-link">Editar</a> |
+                                    <button type="submit" form="form-delete-{{ subc.pk }}" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este subcontrato?');">Eliminar</button>
+                                </td>
+                            {% endif %}
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    {% else %}
+                        <tr>
+                            <td colspan="12">No hay subcontratos cargados.</td>
+                        </tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+
+                {% if not modo_hoja %}
+                <div style="margin-top: 14px; display:flex; align-items:center; gap:8px; font-size:0.9rem;">
+                    <span>Actualizar precios de seleccionados en un</span>
+                    <input type="number" name="porcentaje" step="0.01" min="0" style="width:90px;" value="0.00">
+                    <span>%</span>
+                    <button type="submit" class="btn btn-primary" style="padding:6px 14px;">Actualizar precios</button>
+                </div>
+                {% endif %}
+            {% if modo_hoja %}
+            </div>
+            {% else %}
+            </form>
+            {% endif %}
+        </div>
+
+        {% if not modo_hoja and subcontratos %}
+        <div style="display:none;" aria-hidden="true">
+            {% for subc in subcontratos %}
+            <form id="form-delete-{{ subc.pk }}" method="post" action="{% url 'recursos:subcontrato_delete' subc.pk %}">
+                {% csrf_token %}
+            </form>
             {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No hay subcontratos cargados.</p>
-    {% endif %}
-</section>
-</body>
-</html>
+        </div>
+        {% endif %}
 
+        {% if not modo_hoja %}
+        <div id="card-nuevo-subcontrato" style="display:none; margin-top:12px;">
+            <form method="post" action="{% url 'recursos:subcontrato_list' %}" id="form-nuevo-subcontrato" class="card">
+                {% csrf_token %}
+                <h3 style="margin:0 0 12px;">Nuevo subcontrato</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                    <div class="field"><label for="id_rubro">Rubro</label>{{ form_new.rubro }}</div>
+                    <div class="field"><label for="id_subrubro">Subrubro</label>{{ form_new.subrubro }}</div>
+                    <div class="field"><label for="id_tarea">Tarea</label>{{ form_new.tarea }}</div>
+                    <div class="field"><label for="id_proveedor">Proveedor</label>{{ form_new.proveedor }}</div>
+                    <div class="field"><label for="id_cantidad_por_unidad_venta">Cant. UV</label>{{ form_new.cantidad_por_unidad_venta }}</div>
+                    <div class="field"><label for="id_unidad_de_venta">Unidad venta</label>{{ form_new.unidad_de_venta }}</div>
+                    <div class="field"><label for="id_precio_unidad_venta">Precio UV</label>{{ form_new.precio_unidad_venta }}</div>
+                    <div class="field"><label for="id_moneda">Moneda</label>{{ form_new.moneda }}</div>
+                </div>
+                <div style="margin-top:12px;"><button type="submit" class="btn btn-primary">Guardar</button> <button type="button" class="btn-link btn-danger" onclick="ocultarFilaNuevo();">Cancelar</button></div>
+            </form>
+        </div>
+        {% endif %}
+    </section>
+
+    {% if modo_hoja and subcontratos_no_en_hoja is not None %}
+    <section class="card" style="margin-top:16px;">
+        <h3 style="margin:0 0 12px;">Agregar subcontrato a la hoja</h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin:0 0 12px;">Elegí un subcontrato para agregarlo a la hoja «{{ hoja_seleccionada.nombre }}»:</p>
+        <form method="post" action="{% url 'recursos:subcontrato_list' %}?hoja={{ hoja_seleccionada.pk }}&agregar=1">
+            {% csrf_token %}
+            <table style="margin-bottom:12px;">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Rubro</th>
+                    <th>Subrubro</th>
+                    <th>Tarea</th>
+                    <th>Proveedor</th>
+                    <th class="num">Precio actual</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for s in subcontratos_no_en_hoja %}
+                <tr>
+                    <td><input type="radio" name="subcontrato_id" value="{{ s.pk }}" required></td>
+                    <td>{{ s.rubro }}</td>
+                    <td>{{ s.subrubro }}</td>
+                    <td>{{ s.tarea }}</td>
+                    <td>{{ s.proveedor }}</td>
+                    <td class="num">{{ s.precio_unidad_venta|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6">Todos los subcontratos ya están en la hoja.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% if subcontratos_no_en_hoja %}
+            <button type="submit" class="btn btn-primary">Agregar a la hoja</button>
+            {% endif %}
+            <a href="{% url 'recursos:subcontrato_list' %}?hoja={{ hoja_seleccionada.pk }}" class="btn-link" style="margin-left:8px;">Cancelar</a>
+        </form>
+    </section>
+    {% endif %}
+</main>
+
+<script>
+    document.getElementById('hoja-select').addEventListener('change', function () {
+        var base = "{% url 'recursos:subcontrato_list' %}";
+        var pk = this.value;
+        window.location = pk ? base + "?hoja=" + encodeURIComponent(pk) : base;
+    });
+
+    function mostrarFilaNuevo() {
+        const card = document.getElementById('card-nuevo-subcontrato');
+        if (card) {
+            card.style.display = '';
+            const inputNombre = card.querySelector('input[type="text"], select');
+            if (inputNombre) inputNombre.focus();
+            card.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        }
+    }
+
+    function ocultarFilaNuevo() {
+        const card = document.getElementById('card-nuevo-subcontrato');
+        if (card) card.style.display = 'none';
+    }
+
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            const checked = this.checked;
+            document.querySelectorAll('#tabla-subcontratos tbody input[type="checkbox"][name="selected_ids"]').forEach(function (cb) {
+                if (cb.closest('tr').style.display !== 'none') cb.checked = checked;
+            });
+        });
+    }
+
+    document.querySelectorAll('.filters input').forEach(function (input) {
+        input.addEventListener('input', function () {
+            const col = parseInt(this.getAttribute('data-col'), 10);
+            const value = this.value.toLowerCase();
+            document.querySelectorAll('#tabla-subcontratos tbody tr').forEach(function (row) {
+                const cell = row.children[col];
+                if (!cell) return;
+                row.style.display = cell.textContent.toLowerCase().indexOf(value) !== -1 ? '' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -18,11 +18,11 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    # Autenticación de usuarios (login/logout)
-    path('cuentas/', include('usuarios.urls')),
+    path("admin/", admin.site.urls),
+    # tusaas.com/login -> selector de empresa tras login
+    path("login/", include("usuarios.urls")),
     # Vista principal del sistema
-    path('', include('general.urls')),
-    # Sección específica para recursos (materiales, mano de obra, subcontratos, etc.)
-    path('recursos/', include('recursos.urls')),
+    path("", include("general.urls")),
+    # Recursos (materiales, mano de obra, subcontratos, etc.)
+    path("recursos/", include("recursos.urls")),
 ]

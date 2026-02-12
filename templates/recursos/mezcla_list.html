@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Mezclas · Presupuesto{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filters th { padding-bottom: 6px; }
+    .filters input { font-size: 0.85rem; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>Mezclas</h1>
+            <p>Mezclas de materiales vinculadas a una hoja de precios. El costo se calcula sumando los materiales.</p>
+            <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <label for="hoja-select" style="font-size:0.9rem; color:var(--text-muted);">Hoja de materiales:</label>
+            <select id="hoja-select" style="width:auto; min-width:180px; padding:6px 10px;">
+                <option value="" {% if not hoja_seleccionada %}selected{% endif %}>Precios actuales</option>
+                {% for h in hojas %}
+                    <option value="{{ h.pk }}" {% if hoja_seleccionada and hoja_seleccionada.pk == h.pk %}selected{% endif %}>{{ h.nombre }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-primary" type="button" onclick="mostrarFormNuevo();">+ Nueva mezcla</button>
+            <a href="{% url 'recursos:hoja_precios_list' %}" class="link" style="margin-left:8px;">Ver hojas de materiales</a>
+        </div>
+    </header>
+
+    <section class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <small style="color:var(--text-muted);">Filtrá por las columnas escribiendo en la fila de filtros.</small>
+            {% if hoja_seleccionada %}
+            <small style="color:var(--accent);">Usando hoja «{{ hoja_seleccionada.nombre }}».</small>
+            {% else %}
+            <small style="color:var(--accent);">Usando precios actuales.</small>
+            {% endif %}
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table id="tabla-mezclas">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Mezcla</th>
+                    <th>Unidad de Mezcla</th>
+                    <th class="num">Precio UM</th>
+                    <th></th>
+                </tr>
+                <tr class="filters">
+                    <th></th>
+                    <th><input type="text" data-col="1" placeholder="Filtrar mezcla"></th>
+                    <th><input type="text" data-col="2" placeholder="Filtrar unidad"></th>
+                    <th><input type="text" data-col="3" placeholder="Filtrar precio"></th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for mezcla in mezclas %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><a href="{% url 'recursos:mezcla_detalle' mezcla.pk %}">{{ mezcla.nombre }}</a></td>
+                    <td>{{ mezcla.unidad_de_mezcla }}</td>
+                    <td class="num">{{ mezcla.precio_por_unidad_mezcla|floatformat:2 }}</td>
+                    <td class="actions">
+                        <a href="{% url 'recursos:mezcla_detalle' mezcla.pk %}" class="btn-link">Ver detalle</a> |
+                        <a href="{% url 'recursos:mezcla_edit' mezcla.pk %}" class="btn-link">Editar</a> |
+                        <form action="{% url 'recursos:mezcla_delete' mezcla.pk %}" method="post" style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar esta mezcla?');">Eliminar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">No hay mezclas para esta hoja.</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div id="card-nueva-mezcla" style="display:none; margin-top:16px;">
+            <form method="post" class="card">
+                {% csrf_token %}
+                <h3 style="margin:0 0 12px;">Nueva mezcla</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                    <div class="field"><label for="id_nombre">Nombre</label>{{ form.nombre }}</div>
+                    <div class="field"><label for="id_unidad_de_mezcla">Unidad de mezcla</label>{{ form.unidad_de_mezcla }}</div>
+                    {% if not hoja_seleccionada %}
+                    <div class="field"><label for="id_hoja">Hoja (opcional)</label>{{ form.hoja }}</div>
+                    {% endif %}
+                </div>
+                <div style="margin-top:12px;"><button type="submit" class="btn btn-primary">Crear y agregar materiales</button> <button type="button" class="btn-link" onclick="ocultarFormNuevo();">Cancelar</button></div>
+            </form>
+        </div>
+    </section>
+</main>
+
+<script>
+    document.getElementById('hoja-select').addEventListener('change', function () {
+        var base = "{% url 'recursos:mezcla_list' %}";
+        var pk = this.value;
+        window.location = pk ? base + "?hoja=" + encodeURIComponent(pk) : base;
+    });
+
+    function mostrarFormNuevo() {
+        const card = document.getElementById('card-nueva-mezcla');
+        if (card) {
+            card.style.display = '';
+            const input = card.querySelector('input[type="text"]');
+            if (input) input.focus();
+            card.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        }
+    }
+
+    function ocultarFormNuevo() {
+        const card = document.getElementById('card-nueva-mezcla');
+        if (card) card.style.display = 'none';
+    }
+
+    document.querySelectorAll('.filters input').forEach(function (input) {
+        input.addEventListener('input', function () {
+            const col = parseInt(this.getAttribute('data-col'), 10);
+            const value = this.value.toLowerCase();
+            document.querySelectorAll('#tabla-mezclas tbody tr').forEach(function (row) {
+                const cell = row.children[col];
+                if (!cell) return;
+                row.style.display = cell.textContent.toLowerCase().indexOf(value) !== -1 ? '' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

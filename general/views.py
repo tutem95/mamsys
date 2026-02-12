@@ -1,12 +1,14 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from general.models import CategoriaMaterial, Proveedor, Rubro, Subrubro, TipoMaterial, Unidad
-from recursos.models import ManoDeObra, Material, Subcontrato
+from general.models import CategoriaMaterial, Equipo, Proveedor, RefEquipo, Rubro, Subrubro, TipoMaterial, Unidad
+from recursos.models import ManoDeObra, Material, Mezcla, Subcontrato
 
 from .forms import (
     CategoriaMaterialForm,
+    EquipoForm,
     ProveedorForm,
+    RefEquipoForm,
     RubroForm,
     SubrubroForm,
     TipoMaterialForm,
@@ -14,25 +16,27 @@ from .forms import (
 )
 
 
+@login_required
 def dashboard(request):
     """
     Panel de control básico del sistema de presupuestos.
-
-    Muestra un resumen de las entidades principales:
-    - Catálogos generales: rubros, subrubros, unidades, tipos y categorías de material.
-    - Recursos económicos: materiales, mano de obra y subcontratos.
+    Todos los totales son por request.company.
     """
+    company = request.company
     contexto = {
         "totales": {
-            "rubros": Rubro.objects.count(),
-            "subrubros": Subrubro.objects.count(),
-            "unidades": Unidad.objects.count(),
-            "tipos_material": TipoMaterial.objects.count(),
-            "categorias_material": CategoriaMaterial.objects.count(),
-            "materiales": Material.objects.count(),
-            "mano_de_obra": ManoDeObra.objects.count(),
-            "subcontratos": Subcontrato.objects.count(),
-            "proveedores": Proveedor.objects.count(),
+            "ref_equipos": RefEquipo.objects.filter(company=company).count(),
+            "rubros": Rubro.objects.filter(company=company).count(),
+            "subrubros": Subrubro.objects.filter(company=company).count(),
+            "unidades": Unidad.objects.filter(company=company).count(),
+            "tipos_material": TipoMaterial.objects.filter(company=company).count(),
+            "categorias_material": CategoriaMaterial.objects.filter(company=company).count(),
+            "equipos": Equipo.objects.filter(company=company).count(),
+            "materiales": Material.objects.filter(company=company).count(),
+            "mano_de_obra": ManoDeObra.objects.filter(company=company).count(),
+            "subcontratos": Subcontrato.objects.filter(company=company).count(),
+            "mezclas": Mezcla.objects.filter(company=company).count(),
+            "proveedores": Proveedor.objects.filter(company=company).count(),
         }
     }
     return render(request, "general/dashboard.html", contexto)
@@ -40,37 +44,34 @@ def dashboard(request):
 
 @login_required
 def rubro_list(request):
-    """
-    Listado y alta rápida de Rubros para usuarios autenticados (no hace falta ser staff).
-    """
+    company = request.company
     if request.method == "POST":
-        form = RubroForm(request.POST)
+        form = RubroForm(request.POST, request=request)
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("general:rubro_list")
     else:
-        form = RubroForm()
+        form = RubroForm(request=request)
 
-    rubros = Rubro.objects.all()
-    contexto = {
-        "rubros": rubros,
-        "form": form,
-    }
-    return render(request, "general/rubro_list.html", contexto)
+    rubros = Rubro.objects.filter(company=company)
+    return render(request, "general/rubro_list.html", {"rubros": rubros, "form": form})
 
 
 @login_required
 def rubro_edit(request, pk):
-    rubro = get_object_or_404(Rubro, pk=pk)
+    company = request.company
+    rubro = get_object_or_404(Rubro, pk=pk, company=company)
     if request.method == "POST":
-        form = RubroForm(request.POST, instance=rubro)
+        form = RubroForm(request.POST, instance=rubro, request=request)
         if form.is_valid():
             form.save()
             return redirect("general:rubro_list")
     else:
-        form = RubroForm(instance=rubro)
+        form = RubroForm(instance=rubro, request=request)
 
-    rubros = Rubro.objects.all()
+    rubros = Rubro.objects.filter(company=company)
     return render(
         request,
         "general/rubro_list.html",
@@ -80,7 +81,7 @@ def rubro_edit(request, pk):
 
 @login_required
 def rubro_delete(request, pk):
-    rubro = get_object_or_404(Rubro, pk=pk)
+    rubro = get_object_or_404(Rubro, pk=pk, company=request.company)
     if request.method == "POST":
         rubro.delete()
         return redirect("general:rubro_list")
@@ -93,15 +94,18 @@ def rubro_delete(request, pk):
 
 @login_required
 def unidad_list(request):
+    company = request.company
     if request.method == "POST":
-        form = UnidadForm(request.POST)
+        form = UnidadForm(request.POST, request=request)
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("general:unidad_list")
     else:
-        form = UnidadForm()
+        form = UnidadForm(request=request)
 
-    unidades = Unidad.objects.all()
+    unidades = Unidad.objects.filter(company=company)
     return render(
         request,
         "general/unidad_list.html",
@@ -111,16 +115,17 @@ def unidad_list(request):
 
 @login_required
 def unidad_edit(request, pk):
-    unidad = get_object_or_404(Unidad, pk=pk)
+    company = request.company
+    unidad = get_object_or_404(Unidad, pk=pk, company=company)
     if request.method == "POST":
-        form = UnidadForm(request.POST, instance=unidad)
+        form = UnidadForm(request.POST, instance=unidad, request=request)
         if form.is_valid():
             form.save()
             return redirect("general:unidad_list")
     else:
-        form = UnidadForm(instance=unidad)
+        form = UnidadForm(instance=unidad, request=request)
 
-    unidades = Unidad.objects.all()
+    unidades = Unidad.objects.filter(company=company)
     return render(
         request,
         "general/unidad_list.html",
@@ -130,7 +135,7 @@ def unidad_edit(request, pk):
 
 @login_required
 def unidad_delete(request, pk):
-    unidad = get_object_or_404(Unidad, pk=pk)
+    unidad = get_object_or_404(Unidad, pk=pk, company=request.company)
     if request.method == "POST":
         unidad.delete()
         return redirect("general:unidad_list")
@@ -142,16 +147,73 @@ def unidad_delete(request, pk):
 
 
 @login_required
-def tipo_material_list(request):
+def equipo_list(request):
+    company = request.company
     if request.method == "POST":
-        form = TipoMaterialForm(request.POST)
+        form = EquipoForm(request.POST, request=request)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
+            return redirect("general:equipo_list")
+    else:
+        form = EquipoForm(request=request)
+
+    equipos = Equipo.objects.filter(company=company)
+    return render(
+        request,
+        "general/equipo_list.html",
+        {"equipos": equipos, "form": form},
+    )
+
+
+@login_required
+def equipo_edit(request, pk):
+    company = request.company
+    equipo = get_object_or_404(Equipo, pk=pk, company=company)
+    if request.method == "POST":
+        form = EquipoForm(request.POST, instance=equipo, request=request)
         if form.is_valid():
             form.save()
+            return redirect("general:equipo_list")
+    else:
+        form = EquipoForm(instance=equipo, request=request)
+
+    equipos = Equipo.objects.filter(company=company)
+    return render(
+        request,
+        "general/equipo_list.html",
+        {"equipos": equipos, "form": form, "editing": equipo},
+    )
+
+
+@login_required
+def equipo_delete(request, pk):
+    equipo = get_object_or_404(Equipo, pk=pk, company=request.company)
+    if request.method == "POST":
+        equipo.delete()
+        return redirect("general:equipo_list")
+    return render(
+        request,
+        "general/confirm_delete.html",
+        {"object": equipo, "cancel_url": "general:equipo_list"},
+    )
+
+
+@login_required
+def tipo_material_list(request):
+    company = request.company
+    if request.method == "POST":
+        form = TipoMaterialForm(request.POST, request=request)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("general:tipo_material_list")
     else:
-        form = TipoMaterialForm()
+        form = TipoMaterialForm(request=request)
 
-    tipos = TipoMaterial.objects.all()
+    tipos = TipoMaterial.objects.filter(company=company)
     return render(
         request,
         "general/tipo_material_list.html",
@@ -161,16 +223,17 @@ def tipo_material_list(request):
 
 @login_required
 def tipo_material_edit(request, pk):
-    tipo = get_object_or_404(TipoMaterial, pk=pk)
+    company = request.company
+    tipo = get_object_or_404(TipoMaterial, pk=pk, company=company)
     if request.method == "POST":
-        form = TipoMaterialForm(request.POST, instance=tipo)
+        form = TipoMaterialForm(request.POST, instance=tipo, request=request)
         if form.is_valid():
             form.save()
             return redirect("general:tipo_material_list")
     else:
-        form = TipoMaterialForm(instance=tipo)
+        form = TipoMaterialForm(instance=tipo, request=request)
 
-    tipos = TipoMaterial.objects.all()
+    tipos = TipoMaterial.objects.filter(company=company)
     return render(
         request,
         "general/tipo_material_list.html",
@@ -180,7 +243,7 @@ def tipo_material_edit(request, pk):
 
 @login_required
 def tipo_material_delete(request, pk):
-    tipo = get_object_or_404(TipoMaterial, pk=pk)
+    tipo = get_object_or_404(TipoMaterial, pk=pk, company=request.company)
     if request.method == "POST":
         tipo.delete()
         return redirect("general:tipo_material_list")
@@ -193,15 +256,18 @@ def tipo_material_delete(request, pk):
 
 @login_required
 def categoria_material_list(request):
+    company = request.company
     if request.method == "POST":
-        form = CategoriaMaterialForm(request.POST)
+        form = CategoriaMaterialForm(request.POST, request=request)
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("general:categoria_material_list")
     else:
-        form = CategoriaMaterialForm()
+        form = CategoriaMaterialForm(request=request)
 
-    categorias = CategoriaMaterial.objects.select_related("tipo").all()
+    categorias = CategoriaMaterial.objects.filter(company=company).select_related("tipo")
     return render(
         request,
         "general/categoria_material_list.html",
@@ -211,16 +277,17 @@ def categoria_material_list(request):
 
 @login_required
 def categoria_material_edit(request, pk):
-    categoria = get_object_or_404(CategoriaMaterial, pk=pk)
+    company = request.company
+    categoria = get_object_or_404(CategoriaMaterial, pk=pk, company=company)
     if request.method == "POST":
-        form = CategoriaMaterialForm(request.POST, instance=categoria)
+        form = CategoriaMaterialForm(request.POST, instance=categoria, request=request)
         if form.is_valid():
             form.save()
             return redirect("general:categoria_material_list")
     else:
-        form = CategoriaMaterialForm(instance=categoria)
+        form = CategoriaMaterialForm(instance=categoria, request=request)
 
-    categorias = CategoriaMaterial.objects.select_related("tipo").all()
+    categorias = CategoriaMaterial.objects.filter(company=company).select_related("tipo")
     return render(
         request,
         "general/categoria_material_list.html",
@@ -230,7 +297,7 @@ def categoria_material_edit(request, pk):
 
 @login_required
 def categoria_material_delete(request, pk):
-    categoria = get_object_or_404(CategoriaMaterial, pk=pk)
+    categoria = get_object_or_404(CategoriaMaterial, pk=pk, company=request.company)
     if request.method == "POST":
         categoria.delete()
         return redirect("general:categoria_material_list")
@@ -243,15 +310,18 @@ def categoria_material_delete(request, pk):
 
 @login_required
 def subrubro_list(request):
+    company = request.company
     if request.method == "POST":
-        form = SubrubroForm(request.POST)
+        form = SubrubroForm(request.POST, request=request)
         if form.is_valid():
-            form.save()
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("general:subrubro_list")
     else:
-        form = SubrubroForm()
+        form = SubrubroForm(request=request)
 
-    subrubros = Subrubro.objects.select_related("rubro").all()
+    subrubros = Subrubro.objects.filter(company=company).select_related("rubro")
     return render(
         request,
         "general/subrubro_list.html",
@@ -261,16 +331,17 @@ def subrubro_list(request):
 
 @login_required
 def subrubro_edit(request, pk):
-    subrubro = get_object_or_404(Subrubro, pk=pk)
+    company = request.company
+    subrubro = get_object_or_404(Subrubro, pk=pk, company=company)
     if request.method == "POST":
-        form = SubrubroForm(request.POST, instance=subrubro)
+        form = SubrubroForm(request.POST, instance=subrubro, request=request)
         if form.is_valid():
             form.save()
             return redirect("general:subrubro_list")
     else:
-        form = SubrubroForm(instance=subrubro)
+        form = SubrubroForm(instance=subrubro, request=request)
 
-    subrubros = Subrubro.objects.select_related("rubro").all()
+    subrubros = Subrubro.objects.filter(company=company).select_related("rubro")
     return render(
         request,
         "general/subrubro_list.html",
@@ -280,7 +351,7 @@ def subrubro_edit(request, pk):
 
 @login_required
 def subrubro_delete(request, pk):
-    subrubro = get_object_or_404(Subrubro, pk=pk)
+    subrubro = get_object_or_404(Subrubro, pk=pk, company=request.company)
     if request.method == "POST":
         subrubro.delete()
         return redirect("general:subrubro_list")
@@ -292,16 +363,73 @@ def subrubro_delete(request, pk):
 
 
 @login_required
-def proveedor_list(request):
+def ref_equipo_list(request):
+    company = request.company
     if request.method == "POST":
-        form = ProveedorForm(request.POST)
+        form = RefEquipoForm(request.POST, request=request)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
+            return redirect("general:ref_equipo_list")
+    else:
+        form = RefEquipoForm(request=request)
+
+    ref_equipos = RefEquipo.objects.filter(company=company).select_related("equipo")
+    return render(
+        request,
+        "general/ref_equipo_list.html",
+        {"ref_equipos": ref_equipos, "form": form},
+    )
+
+
+@login_required
+def ref_equipo_edit(request, pk):
+    company = request.company
+    ref_equipo = get_object_or_404(RefEquipo, pk=pk, company=company)
+    if request.method == "POST":
+        form = RefEquipoForm(request.POST, instance=ref_equipo, request=request)
         if form.is_valid():
             form.save()
+            return redirect("general:ref_equipo_list")
+    else:
+        form = RefEquipoForm(instance=ref_equipo, request=request)
+
+    ref_equipos = RefEquipo.objects.filter(company=company).select_related("equipo")
+    return render(
+        request,
+        "general/ref_equipo_list.html",
+        {"ref_equipos": ref_equipos, "form": form, "editing": ref_equipo},
+    )
+
+
+@login_required
+def ref_equipo_delete(request, pk):
+    ref_equipo = get_object_or_404(RefEquipo, pk=pk, company=request.company)
+    if request.method == "POST":
+        ref_equipo.delete()
+        return redirect("general:ref_equipo_list")
+    return render(
+        request,
+        "general/confirm_delete.html",
+        {"object": ref_equipo, "cancel_url": "general:ref_equipo_list"},
+    )
+
+
+@login_required
+def proveedor_list(request):
+    company = request.company
+    if request.method == "POST":
+        form = ProveedorForm(request.POST, request=request)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("general:proveedor_list")
     else:
-        form = ProveedorForm()
+        form = ProveedorForm(request=request)
 
-    proveedores = Proveedor.objects.all()
+    proveedores = Proveedor.objects.filter(company=company)
     return render(
         request,
         "general/proveedor_list.html",
@@ -311,16 +439,17 @@ def proveedor_list(request):
 
 @login_required
 def proveedor_edit(request, pk):
-    proveedor = get_object_or_404(Proveedor, pk=pk)
+    company = request.company
+    proveedor = get_object_or_404(Proveedor, pk=pk, company=company)
     if request.method == "POST":
-        form = ProveedorForm(request.POST, instance=proveedor)
+        form = ProveedorForm(request.POST, instance=proveedor, request=request)
         if form.is_valid():
             form.save()
             return redirect("general:proveedor_list")
     else:
-        form = ProveedorForm(instance=proveedor)
+        form = ProveedorForm(instance=proveedor, request=request)
 
-    proveedores = Proveedor.objects.all()
+    proveedores = Proveedor.objects.filter(company=company)
     return render(
         request,
         "general/proveedor_list.html",
@@ -330,7 +459,7 @@ def proveedor_edit(request, pk):
 
 @login_required
 def proveedor_delete(request, pk):
-    proveedor = get_object_or_404(Proveedor, pk=pk)
+    proveedor = get_object_or_404(Proveedor, pk=pk, company=request.company)
     if request.method == "POST":
         proveedor.delete()
         return redirect("general:proveedor_list")

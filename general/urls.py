@@ -27,6 +27,10 @@ urlpatterns = [
         views.tipo_material_delete,
         name="tipo_material_delete",
     ),
+    # Equipos
+    path("equipos/", views.equipo_list, name="equipo_list"),
+    path("equipos/<int:pk>/editar/", views.equipo_edit, name="equipo_edit"),
+    path("equipos/<int:pk>/eliminar/", views.equipo_delete, name="equipo_delete"),
     # Categorías de material
     path(
         "categorias-material/",
@@ -42,6 +46,18 @@ urlpatterns = [
         "categorias-material/<int:pk>/eliminar/",
         views.categoria_material_delete,
         name="categoria_material_delete",
+    ),
+    # Ref. Equipos (subcategoría de Equipo)
+    path("ref-equipos/", views.ref_equipo_list, name="ref_equipo_list"),
+    path(
+        "ref-equipos/<int:pk>/editar/",
+        views.ref_equipo_edit,
+        name="ref_equipo_edit",
+    ),
+    path(
+        "ref-equipos/<int:pk>/eliminar/",
+        views.ref_equipo_delete,
+        name="ref_equipo_delete",
     ),
     # Subrubros
     path("subrubros/", views.subrubro_list, name="subrubro_list"),

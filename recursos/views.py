@@ -2,46 +2,155 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
-from .forms import ManoDeObraForm, MaterialForm, SubcontratoForm
-from .models import HojaPrecioMaterial, HojaPrecios, ManoDeObra, Material, Subcontrato
+from .forms import (
+    HojaPrecioMaterialForm,
+    HojaPrecioManoDeObraForm,
+    HojaPrecioSubcontratoForm,
+    ManoDeObraForm,
+    MaterialForm,
+    MezclaForm,
+    MezclaMaterialForm,
+    SubcontratoForm,
+)
+from .models import (
+    HojaPrecioMaterial,
+    HojaPrecioManoDeObra,
+    HojaPrecioSubcontrato,
+    HojaPrecios,
+    HojaPreciosManoDeObra,
+    HojaPreciosSubcontrato,
+    ManoDeObra,
+    Material,
+    Mezcla,
+    MezclaMaterial,
+    Subcontrato,
+)
 
 
 @login_required
 def material_list(request):
+    company = request.company
+    hojas = HojaPrecios.objects.filter(company=company).order_by("-creado_en")
+    hoja_id = request.GET.get("hoja")
+    editar_id = request.GET.get("editar")
+    agregar = request.GET.get("agregar")
+    hoja_seleccionada = None
+    modo_hoja = False
+    editing_hoja = None
+    form_hoja_detalle = None
+
+    if hoja_id:
+        hoja_seleccionada = get_object_or_404(HojaPrecios, pk=hoja_id, company=company)
+        modo_hoja = True
+        materiales = list(
+            hoja_seleccionada.detalles.select_related(
+                "material",
+                "material__proveedor",
+                "material__tipo",
+                "material__categoria",
+                "material__unidad_de_venta",
+            ).all()
+        )
+
+        # Agregar material a la hoja
+        if agregar and request.method == "POST":
+            material_id = request.POST.get("material_id")
+            if material_id:
+                material = get_object_or_404(Material, pk=material_id, company=company)
+                if not hoja_seleccionada.detalles.filter(material=material).exists():
+                    HojaPrecioMaterial.objects.create(
+                        hoja=hoja_seleccionada,
+                        material=material,
+                        cantidad_por_unidad_venta=material.cantidad_por_unidad_venta,
+                        precio_unidad_venta=material.precio_unidad_venta,
+                        moneda=material.moneda,
+                    )
+                return redirect(f"{reverse('recursos:material_list')}?hoja={hoja_id}")
+
+        # Editar detalle de hoja
+        if editar_id:
+            editing_hoja = get_object_or_404(
+                HojaPrecioMaterial,
+                pk=editar_id,
+                hoja=hoja_seleccionada,
+            )
+            if request.method == "POST":
+                form_hoja_detalle = HojaPrecioMaterialForm(
+                    request.POST, instance=editing_hoja
+                )
+                if form_hoja_detalle.is_valid():
+                    form_hoja_detalle.save()
+                    return redirect(f"{reverse('recursos:material_list')}?hoja={hoja_id}")
+            else:
+                form_hoja_detalle = HojaPrecioMaterialForm(instance=editing_hoja)
+
+        form_new = MaterialForm(request=request)
+        materiales_no_en_hoja = None
+        if agregar:
+            ids_en_hoja = hoja_seleccionada.detalles.values_list("material_id", flat=True)
+            materiales_no_en_hoja = Material.objects.filter(company=company).exclude(
+                pk__in=ids_en_hoja
+            ).select_related("proveedor", "tipo", "categoria", "unidad_de_venta")
+
+        return render(
+            request,
+            "recursos/material_list.html",
+            {
+                "materiales": materiales,
+                "form_new": form_new,
+                "hojas": hojas,
+                "hoja_seleccionada": hoja_seleccionada,
+                "modo_hoja": modo_hoja,
+                "editing_hoja": editing_hoja,
+                "form_hoja_detalle": form_hoja_detalle,
+                "materiales_no_en_hoja": materiales_no_en_hoja,
+            },
+        )
+
     if request.method == "POST":
-        form_new = MaterialForm(request.POST)
+        form_new = MaterialForm(request.POST, request=request)
         if form_new.is_valid():
-            form_new.save()
+            obj = form_new.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("recursos:material_list")
     else:
-        form_new = MaterialForm()
+        form_new = MaterialForm(request=request)
 
-    materiales = Material.objects.select_related(
+    materiales = Material.objects.filter(company=company).select_related(
         "proveedor", "tipo", "categoria", "unidad_de_venta"
-    ).all()
+    )
     return render(
         request,
         "recursos/material_list.html",
-        {"materiales": materiales, "form_new": form_new},
+        {
+            "materiales": materiales,
+            "form_new": form_new,
+            "hojas": hojas,
+            "hoja_seleccionada": hoja_seleccionada,
+            "modo_hoja": modo_hoja,
+        },
     )
 
 
 @login_required
 def material_edit(request, pk):
-    material = get_object_or_404(Material, pk=pk)
+    company = request.company
+    material = get_object_or_404(Material, pk=pk, company=company)
     if request.method == "POST":
-        form_edit = MaterialForm(request.POST, instance=material)
+        form_edit = MaterialForm(request.POST, instance=material, request=request)
         if form_edit.is_valid():
             form_edit.save()
             return redirect("recursos:material_list")
     else:
-        form_edit = MaterialForm(instance=material)
+        form_edit = MaterialForm(instance=material, request=request)
 
-    materiales = Material.objects.select_related(
+    materiales = Material.objects.filter(company=company).select_related(
         "proveedor", "tipo", "categoria", "unidad_de_venta"
-    ).all()
-    form_new = MaterialForm()
+    )
+    form_new = MaterialForm(request=request)
     return render(
         request,
         "recursos/material_list.html",
@@ -56,7 +165,7 @@ def material_edit(request, pk):
 
 @login_required
 def material_delete(request, pk):
-    material = get_object_or_404(Material, pk=pk)
+    material = get_object_or_404(Material, pk=pk, company=request.company)
     if request.method == "POST":
         material.delete()
         return redirect("recursos:material_list")
@@ -86,7 +195,7 @@ def material_bulk_update(request):
     except InvalidOperation:
         return redirect("recursos:material_list")
 
-    queryset = Material.objects.filter(pk__in=ids)
+    queryset = Material.objects.filter(company=request.company, pk__in=ids)
     Material.actualizar_precios_por_porcentaje(queryset, porcentaje)
 
     return redirect("recursos:material_list")
@@ -94,10 +203,7 @@ def material_bulk_update(request):
 
 @login_required
 def hoja_precios_list(request):
-    """
-    Listado de hojas de precios y creación de nuevas hojas copiando de
-    los precios actuales o de otra hoja.
-    """
+    company = request.company
     if request.method == "POST":
         nombre = request.POST.get("nombre") or ""
         origen_tipo = request.POST.get("origen_tipo") or "actual"
@@ -106,11 +212,10 @@ def hoja_precios_list(request):
         if not nombre.strip():
             return redirect("recursos:hoja_precios_list")
 
-        hoja = HojaPrecios.objects.create(nombre=nombre.strip())
+        hoja = HojaPrecios.objects.create(nombre=nombre.strip(), company=company)
 
-        # Copiar datos según el origen
         if origen_tipo == "actual":
-            materiales = Material.objects.all().only(
+            materiales = Material.objects.filter(company=company).only(
                 "pk",
                 "cantidad_por_unidad_venta",
                 "precio_unidad_venta",
@@ -129,7 +234,7 @@ def hoja_precios_list(request):
                 ]
             )
         elif origen_tipo == "hoja" and origen_hoja_id:
-            origen = get_object_or_404(HojaPrecios, pk=origen_hoja_id)
+            origen = get_object_or_404(HojaPrecios, pk=origen_hoja_id, company=company)
             hoja.origen = origen
             hoja.save(update_fields=["origen"])
             detalles = origen.detalles.select_related("material").all()
@@ -148,7 +253,7 @@ def hoja_precios_list(request):
 
         return redirect("recursos:hoja_precios_list")
 
-    hojas = HojaPrecios.objects.all()
+    hojas = HojaPrecios.objects.filter(company=company)
     return render(
         request,
         "recursos/hoja_precios_list.html",
@@ -158,7 +263,7 @@ def hoja_precios_list(request):
 
 @login_required
 def hoja_precios_detalle(request, pk):
-    hoja = get_object_or_404(HojaPrecios, pk=pk)
+    hoja = get_object_or_404(HojaPrecios, pk=pk, company=request.company)
     detalles = hoja.detalles.select_related("material").all()
     return render(
         request,
@@ -168,45 +273,181 @@ def hoja_precios_detalle(request, pk):
 
 
 @login_required
-def mano_de_obra_list(request):
+def hoja_detalle_edit(request, hoja_pk, detalle_pk):
+    """Editar cantidad, precio y moneda de un material en una hoja de precios."""
+    hoja = get_object_or_404(HojaPrecios, pk=hoja_pk, company=request.company)
+    detalle = get_object_or_404(HojaPrecioMaterial, pk=detalle_pk, hoja=hoja)
     if request.method == "POST":
-        form = ManoDeObraForm(request.POST)
+        form = HojaPrecioMaterialForm(request.POST, instance=detalle)
         if form.is_valid():
             form.save()
+            return redirect(f"{reverse('recursos:material_list')}?hoja={hoja_pk}")
+    return redirect(f"{reverse('recursos:material_list')}?hoja={hoja_pk}")
+
+
+@login_required
+def hoja_detalle_delete(request, hoja_pk, detalle_pk):
+    """Quitar un material de una hoja de precios."""
+    hoja = get_object_or_404(HojaPrecios, pk=hoja_pk, company=request.company)
+    detalle = get_object_or_404(HojaPrecioMaterial, pk=detalle_pk, hoja=hoja)
+    if request.method == "POST":
+        detalle.delete()
+        return redirect(f"{reverse('recursos:material_list')}?hoja={hoja_pk}")
+    return redirect(f"{reverse('recursos:material_list')}?hoja={hoja_pk}")
+
+
+@login_required
+def mano_de_obra_list(request):
+    company = request.company
+    hojas = HojaPreciosManoDeObra.objects.filter(company=company).order_by("-creado_en")
+    hoja_id = request.GET.get("hoja")
+    editar_id = request.GET.get("editar")
+    agregar = request.GET.get("agregar")
+    hoja_seleccionada = None
+    modo_hoja = False
+    editing_hoja = None
+    form_hoja_detalle = None
+
+    if hoja_id:
+        hoja_seleccionada = get_object_or_404(
+            HojaPreciosManoDeObra, pk=hoja_id, company=company
+        )
+        modo_hoja = True
+        items = list(
+            hoja_seleccionada.detalles.select_related(
+                "mano_de_obra",
+                "mano_de_obra__rubro",
+                "mano_de_obra__subrubro",
+                "mano_de_obra__equipo",
+                "mano_de_obra__ref_equipo",
+                "mano_de_obra__unidad_de_venta",
+            ).all()
+        )
+
+        if agregar and request.method == "POST":
+            md_id = request.POST.get("mano_de_obra_id")
+            if md_id:
+                md = get_object_or_404(ManoDeObra, pk=md_id, company=company)
+                if not hoja_seleccionada.detalles.filter(mano_de_obra=md).exists():
+                    HojaPrecioManoDeObra.objects.create(
+                        hoja=hoja_seleccionada,
+                        mano_de_obra=md,
+                        cantidad_por_unidad_venta=md.cantidad_por_unidad_venta,
+                        precio_unidad_venta=md.precio_unidad_venta,
+                    )
+                return redirect(f"{reverse('recursos:mano_de_obra_list')}?hoja={hoja_id}")
+
+        if editar_id:
+            editing_hoja = get_object_or_404(
+                HojaPrecioManoDeObra,
+                pk=editar_id,
+                hoja=hoja_seleccionada,
+            )
+            if request.method == "POST":
+                form_hoja_detalle = HojaPrecioManoDeObraForm(
+                    request.POST, instance=editing_hoja
+                )
+                if form_hoja_detalle.is_valid():
+                    form_hoja_detalle.save()
+                    return redirect(
+                        f"{reverse('recursos:mano_de_obra_list')}?hoja={hoja_id}"
+                    )
+            else:
+                form_hoja_detalle = HojaPrecioManoDeObraForm(
+                    instance=editing_hoja
+                )
+
+        form_new = ManoDeObraForm(request=request)
+        items_no_en_hoja = None
+        if agregar:
+            ids_en_hoja = hoja_seleccionada.detalles.values_list(
+                "mano_de_obra_id", flat=True
+            )
+            items_no_en_hoja = ManoDeObra.objects.filter(
+                company=company
+            ).exclude(
+                pk__in=ids_en_hoja
+            ).select_related(
+                "rubro", "subrubro", "equipo", "ref_equipo", "unidad_de_venta"
+            )
+
+        return render(
+            request,
+            "recursos/mano_de_obra_list.html",
+            {
+                "items": items,
+                "form_new": form_new,
+                "hojas": hojas,
+                "hoja_seleccionada": hoja_seleccionada,
+                "modo_hoja": modo_hoja,
+                "editing_hoja": editing_hoja,
+                "form_hoja_detalle": form_hoja_detalle,
+                "items_no_en_hoja": items_no_en_hoja,
+            },
+        )
+
+    if request.method == "POST":
+        form_new = ManoDeObraForm(request.POST, request=request)
+        if form_new.is_valid():
+            obj = form_new.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("recursos:mano_de_obra_list")
     else:
-        form = ManoDeObraForm()
+        form_new = ManoDeObraForm(request=request)
 
-    items = ManoDeObra.objects.select_related("unidad_de_analisis").all()
+    items = ManoDeObra.objects.filter(company=company).select_related(
+        "rubro", "subrubro", "equipo", "ref_equipo", "unidad_de_venta"
+    )
     return render(
         request,
         "recursos/mano_de_obra_list.html",
-        {"items": items, "form": form},
+        {
+            "items": items,
+            "form_new": form_new,
+            "hojas": hojas,
+            "hoja_seleccionada": hoja_seleccionada,
+            "modo_hoja": modo_hoja,
+            "editing": None,
+        },
     )
 
 
 @login_required
 def mano_de_obra_edit(request, pk):
-    item = get_object_or_404(ManoDeObra, pk=pk)
+    company = request.company
+    item = get_object_or_404(ManoDeObra, pk=pk, company=company)
     if request.method == "POST":
-        form = ManoDeObraForm(request.POST, instance=item)
+        form = ManoDeObraForm(request.POST, instance=item, request=request)
         if form.is_valid():
             form.save()
             return redirect("recursos:mano_de_obra_list")
     else:
-        form = ManoDeObraForm(instance=item)
+        form = ManoDeObraForm(instance=item, request=request)
 
-    items = ManoDeObra.objects.select_related("unidad_de_analisis").all()
+    items = ManoDeObra.objects.filter(company=company).select_related(
+        "rubro", "subrubro", "equipo", "ref_equipo", "unidad_de_venta"
+    )
+    form_new = ManoDeObraForm(request=request)
+    hojas = HojaPreciosManoDeObra.objects.filter(company=company).order_by("-creado_en")
     return render(
         request,
         "recursos/mano_de_obra_list.html",
-        {"items": items, "form": form, "editing": item},
+        {
+            "items": items,
+            "form_new": form_new,
+            "form_edit": form,
+            "editing": item,
+            "hojas": hojas,
+            "hoja_seleccionada": None,
+            "modo_hoja": False,
+        },
     )
 
 
 @login_required
 def mano_de_obra_delete(request, pk):
-    item = get_object_or_404(ManoDeObra, pk=pk)
+    item = get_object_or_404(ManoDeObra, pk=pk, company=request.company)
     if request.method == "POST":
         item.delete()
         return redirect("recursos:mano_de_obra_list")
@@ -218,45 +459,408 @@ def mano_de_obra_delete(request, pk):
 
 
 @login_required
-def subcontrato_list(request):
+def mano_de_obra_bulk_update(request):
+    """Actualiza precio_unidad_venta de mano de obra seleccionada por porcentaje."""
+    if request.method != "POST":
+        return redirect("recursos:mano_de_obra_list")
+
+    ids = request.POST.getlist("selected_ids")
+    porcentaje_str = request.POST.get("porcentaje") or "0"
+
+    if not ids:
+        return redirect("recursos:mano_de_obra_list")
+
+    try:
+        porcentaje = Decimal(porcentaje_str)
+    except InvalidOperation:
+        return redirect("recursos:mano_de_obra_list")
+
+    queryset = ManoDeObra.objects.filter(company=request.company, pk__in=ids)
+    ManoDeObra.actualizar_precios_por_porcentaje(queryset, porcentaje)
+
+    return redirect("recursos:mano_de_obra_list")
+
+
+@login_required
+def hoja_mano_de_obra_list(request):
+    company = request.company
     if request.method == "POST":
-        form = SubcontratoForm(request.POST)
+        nombre = request.POST.get("nombre") or ""
+        origen_tipo = request.POST.get("origen_tipo") or "actual"
+        origen_hoja_id = request.POST.get("origen_hoja") or None
+
+        if not nombre.strip():
+            return redirect("recursos:hoja_mano_de_obra_list")
+
+        hoja = HojaPreciosManoDeObra.objects.create(
+            nombre=nombre.strip(), company=company
+        )
+
+        if origen_tipo == "actual":
+            items = ManoDeObra.objects.filter(company=company).only(
+                "pk",
+                "cantidad_por_unidad_venta",
+                "precio_unidad_venta",
+            )
+            HojaPrecioManoDeObra.objects.bulk_create(
+                [
+                    HojaPrecioManoDeObra(
+                        hoja=hoja,
+                        mano_de_obra=md,
+                        cantidad_por_unidad_venta=md.cantidad_por_unidad_venta,
+                        precio_unidad_venta=md.precio_unidad_venta,
+                    )
+                    for md in items
+                ]
+            )
+        elif origen_tipo == "hoja" and origen_hoja_id:
+            origen = get_object_or_404(
+                HojaPreciosManoDeObra, pk=origen_hoja_id, company=company
+            )
+            hoja.origen = origen
+            hoja.save(update_fields=["origen"])
+            detalles = origen.detalles.select_related("mano_de_obra").all()
+            HojaPrecioManoDeObra.objects.bulk_create(
+                [
+                    HojaPrecioManoDeObra(
+                        hoja=hoja,
+                        mano_de_obra=d.mano_de_obra,
+                        cantidad_por_unidad_venta=d.cantidad_por_unidad_venta,
+                        precio_unidad_venta=d.precio_unidad_venta,
+                    )
+                    for d in detalles
+                ]
+            )
+
+        return redirect("recursos:hoja_mano_de_obra_list")
+
+    hojas = HojaPreciosManoDeObra.objects.filter(company=company)
+    return render(
+        request,
+        "recursos/hoja_mano_de_obra_list.html",
+        {"hojas": hojas},
+    )
+
+
+@login_required
+def hoja_mano_de_obra_detalle(request, pk):
+    hoja = get_object_or_404(HojaPreciosManoDeObra, pk=pk, company=request.company)
+    detalles = hoja.detalles.select_related(
+        "mano_de_obra",
+        "mano_de_obra__rubro",
+        "mano_de_obra__subrubro",
+        "mano_de_obra__equipo",
+        "mano_de_obra__ref_equipo",
+        "mano_de_obra__unidad_de_venta",
+    ).all()
+    return render(
+        request,
+        "recursos/hoja_mano_de_obra_detalle.html",
+        {"hoja": hoja, "detalles": detalles},
+    )
+
+
+@login_required
+def hoja_mano_de_obra_detalle_edit(request, hoja_pk, detalle_pk):
+    hoja = get_object_or_404(
+        HojaPreciosManoDeObra, pk=hoja_pk, company=request.company
+    )
+    detalle = get_object_or_404(
+        HojaPrecioManoDeObra, pk=detalle_pk, hoja=hoja
+    )
+    if request.method == "POST":
+        form = HojaPrecioManoDeObraForm(request.POST, instance=detalle)
         if form.is_valid():
             form.save()
+            return redirect(
+                f"{reverse('recursos:mano_de_obra_list')}?hoja={hoja_pk}"
+            )
+    return redirect(f"{reverse('recursos:mano_de_obra_list')}?hoja={hoja_pk}")
+
+
+@login_required
+def hoja_mano_de_obra_detalle_delete(request, hoja_pk, detalle_pk):
+    hoja = get_object_or_404(
+        HojaPreciosManoDeObra, pk=hoja_pk, company=request.company
+    )
+    detalle = get_object_or_404(
+        HojaPrecioManoDeObra, pk=detalle_pk, hoja=hoja
+    )
+    if request.method == "POST":
+        detalle.delete()
+        return redirect(f"{reverse('recursos:mano_de_obra_list')}?hoja={hoja_pk}")
+    return redirect(f"{reverse('recursos:mano_de_obra_list')}?hoja={hoja_pk}")
+
+
+@login_required
+def mezcla_list(request):
+    company = request.company
+    hojas = HojaPrecios.objects.filter(company=company).order_by("-creado_en")
+    hoja_id = request.GET.get("hoja")
+    hoja_seleccionada = None
+
+    if hoja_id:
+        hoja_seleccionada = get_object_or_404(HojaPrecios, pk=hoja_id, company=company)
+        mezclas = Mezcla.objects.filter(company=company, hoja=hoja_seleccionada)
+    else:
+        mezclas = Mezcla.objects.filter(company=company, hoja__isnull=True)
+
+    mezclas = mezclas.select_related("unidad_de_mezcla", "hoja").order_by("nombre")
+
+    if request.method == "POST":
+        form = MezclaForm(request.POST, request=request)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.company = company
+            obj.hoja = hoja_seleccionada
+            obj.save()
+            return redirect("recursos:mezcla_detalle", pk=obj.pk)
+    else:
+        form = MezclaForm(request=request, initial={"hoja": hoja_seleccionada})
+
+    return render(
+        request,
+        "recursos/mezcla_list.html",
+        {
+            "mezclas": mezclas,
+            "form": form,
+            "hojas": hojas,
+            "hoja_seleccionada": hoja_seleccionada,
+        },
+    )
+
+
+@login_required
+def mezcla_detalle(request, pk):
+    mezcla = get_object_or_404(Mezcla, pk=pk, company=request.company)
+    detalles = mezcla.detalles.select_related(
+        "material",
+        "material__proveedor",
+        "material__unidad_de_venta",
+    ).all()
+    total = sum(d.costo_en_hoja() for d in detalles)
+    return render(
+        request,
+        "recursos/mezcla_detalle.html",
+        {"mezcla": mezcla, "detalles": detalles, "total": total},
+    )
+
+
+@login_required
+def mezcla_edit(request, pk):
+    mezcla = get_object_or_404(Mezcla, pk=pk, company=request.company)
+    if request.method == "POST":
+        form = MezclaForm(request.POST, instance=mezcla, request=request)
+        if form.is_valid():
+            form.save()
+            return redirect("recursos:mezcla_detalle", pk=mezcla.pk)
+    else:
+        form = MezclaForm(instance=mezcla, request=request)
+
+    return render(
+        request,
+        "recursos/mezcla_form.html",
+        {"form": form, "mezcla": mezcla, "editing": True},
+    )
+
+
+@login_required
+def mezcla_delete(request, pk):
+    mezcla = get_object_or_404(Mezcla, pk=pk, company=request.company)
+    if request.method == "POST":
+        mezcla.delete()
+        return redirect("recursos:mezcla_list")
+    return render(
+        request,
+        "general/confirm_delete.html",
+        {"object": mezcla, "cancel_url": "recursos:mezcla_list"},
+    )
+
+
+@login_required
+def mezcla_material_add(request, pk):
+    mezcla = get_object_or_404(Mezcla, pk=pk, company=request.company)
+    if request.method == "POST":
+        form = MezclaMaterialForm(request.POST, mezcla=mezcla)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.mezcla = mezcla
+            obj.save()
+            return redirect("recursos:mezcla_detalle", pk=mezcla.pk)
+    else:
+        form = MezclaMaterialForm(mezcla=mezcla)
+
+    return render(
+        request,
+        "recursos/mezcla_material_form.html",
+        {"form": form, "mezcla": mezcla},
+    )
+
+
+@login_required
+def mezcla_material_delete(request, mezcla_pk, detalle_pk):
+    mezcla = get_object_or_404(Mezcla, pk=mezcla_pk, company=request.company)
+    detalle = get_object_or_404(MezclaMaterial, pk=detalle_pk, mezcla=mezcla)
+    if request.method == "POST":
+        detalle.delete()
+        return redirect("recursos:mezcla_detalle", pk=mezcla.pk)
+    return redirect("recursos:mezcla_detalle", pk=mezcla.pk)
+
+
+@login_required
+def subcontrato_list(request):
+    company = request.company
+    hojas = HojaPreciosSubcontrato.objects.filter(company=company).order_by("-creado_en")
+    hoja_id = request.GET.get("hoja")
+    editar_id = request.GET.get("editar")
+    agregar = request.GET.get("agregar")
+    hoja_seleccionada = None
+    modo_hoja = False
+    editing_hoja = None
+    form_hoja_detalle = None
+
+    if hoja_id:
+        hoja_seleccionada = get_object_or_404(
+            HojaPreciosSubcontrato, pk=hoja_id, company=company
+        )
+        modo_hoja = True
+        subcontratos = list(
+            hoja_seleccionada.detalles.select_related(
+                "subcontrato",
+                "subcontrato__rubro",
+                "subcontrato__subrubro",
+                "subcontrato__proveedor",
+                "subcontrato__unidad_de_venta",
+            ).all()
+        )
+
+        if agregar and request.method == "POST":
+            subcontrato_id = request.POST.get("subcontrato_id")
+            if subcontrato_id:
+                subc = get_object_or_404(
+                    Subcontrato, pk=subcontrato_id, company=company
+                )
+                if not hoja_seleccionada.detalles.filter(subcontrato=subc).exists():
+                    HojaPrecioSubcontrato.objects.create(
+                        hoja=hoja_seleccionada,
+                        subcontrato=subc,
+                        cantidad_por_unidad_venta=subc.cantidad_por_unidad_venta,
+                        precio_unidad_venta=subc.precio_unidad_venta,
+                        moneda=subc.moneda,
+                    )
+                return redirect(f"{reverse('recursos:subcontrato_list')}?hoja={hoja_id}")
+
+        if editar_id:
+            editing_hoja = get_object_or_404(
+                HojaPrecioSubcontrato,
+                pk=editar_id,
+                hoja=hoja_seleccionada,
+            )
+            if request.method == "POST":
+                form_hoja_detalle = HojaPrecioSubcontratoForm(
+                    request.POST, instance=editing_hoja
+                )
+                if form_hoja_detalle.is_valid():
+                    form_hoja_detalle.save()
+                    return redirect(
+                        f"{reverse('recursos:subcontrato_list')}?hoja={hoja_id}"
+                    )
+            else:
+                form_hoja_detalle = HojaPrecioSubcontratoForm(
+                    instance=editing_hoja
+                )
+
+        form_new = SubcontratoForm(request=request)
+        subcontratos_no_en_hoja = None
+        if agregar:
+            ids_en_hoja = hoja_seleccionada.detalles.values_list(
+                "subcontrato_id", flat=True
+            )
+            subcontratos_no_en_hoja = Subcontrato.objects.filter(
+                company=company
+            ).exclude(
+                pk__in=ids_en_hoja
+            ).select_related(
+                "rubro", "subrubro", "proveedor", "unidad_de_venta"
+            )
+
+        return render(
+            request,
+            "recursos/subcontrato_list.html",
+            {
+                "subcontratos": subcontratos,
+                "form_new": form_new,
+                "hojas": hojas,
+                "hoja_seleccionada": hoja_seleccionada,
+                "modo_hoja": modo_hoja,
+                "editing_hoja": editing_hoja,
+                "form_hoja_detalle": form_hoja_detalle,
+                "subcontratos_no_en_hoja": subcontratos_no_en_hoja,
+            },
+        )
+
+    if request.method == "POST":
+        form_new = SubcontratoForm(request.POST, request=request)
+        if form_new.is_valid():
+            obj = form_new.save(commit=False)
+            obj.company = company
+            obj.save()
             return redirect("recursos:subcontrato_list")
     else:
-        form = SubcontratoForm()
+        form_new = SubcontratoForm(request=request)
 
-    subcontratos = Subcontrato.objects.select_related("unidad_de_analisis").all()
+    subcontratos = Subcontrato.objects.filter(company=company).select_related(
+        "rubro", "subrubro", "proveedor", "unidad_de_venta"
+    )
     return render(
         request,
         "recursos/subcontrato_list.html",
-        {"subcontratos": subcontratos, "form": form},
+        {
+            "subcontratos": subcontratos,
+            "form_new": form_new,
+            "hojas": hojas,
+            "hoja_seleccionada": hoja_seleccionada,
+            "modo_hoja": modo_hoja,
+            "editing": None,
+        },
     )
 
 
 @login_required
 def subcontrato_edit(request, pk):
-    subcontrato = get_object_or_404(Subcontrato, pk=pk)
+    company = request.company
+    subcontrato = get_object_or_404(Subcontrato, pk=pk, company=company)
     if request.method == "POST":
-        form = SubcontratoForm(request.POST, instance=subcontrato)
+        form = SubcontratoForm(request.POST, instance=subcontrato, request=request)
         if form.is_valid():
             form.save()
             return redirect("recursos:subcontrato_list")
     else:
-        form = SubcontratoForm(instance=subcontrato)
+        form = SubcontratoForm(instance=subcontrato, request=request)
 
-    subcontratos = Subcontrato.objects.select_related("unidad_de_analisis").all()
+    subcontratos = Subcontrato.objects.filter(company=company).select_related(
+        "rubro", "subrubro", "proveedor", "unidad_de_venta"
+    )
+    form_new = SubcontratoForm(request=request)
+    hojas = HojaPreciosSubcontrato.objects.filter(company=company).order_by("-creado_en")
     return render(
         request,
         "recursos/subcontrato_list.html",
-        {"subcontratos": subcontratos, "form": form, "editing": subcontrato},
+        {
+            "subcontratos": subcontratos,
+            "form_new": form_new,
+            "form_edit": form,
+            "editing": subcontrato,
+            "hojas": hojas,
+            "hoja_seleccionada": None,
+            "modo_hoja": False,
+        },
     )
 
 
 @login_required
 def subcontrato_delete(request, pk):
-    subcontrato = get_object_or_404(Subcontrato, pk=pk)
+    subcontrato = get_object_or_404(Subcontrato, pk=pk, company=request.company)
     if request.method == "POST":
         subcontrato.delete()
         return redirect("recursos:subcontrato_list")
@@ -265,4 +869,140 @@ def subcontrato_delete(request, pk):
         "general/confirm_delete.html",
         {"object": subcontrato, "cancel_url": "recursos:subcontrato_list"},
     )
+
+
+@login_required
+def subcontrato_bulk_update(request):
+    """Actualiza precio_unidad_venta de subcontratos seleccionados por porcentaje."""
+    if request.method != "POST":
+        return redirect("recursos:subcontrato_list")
+
+    ids = request.POST.getlist("selected_ids")
+    porcentaje_str = request.POST.get("porcentaje") or "0"
+
+    if not ids:
+        return redirect("recursos:subcontrato_list")
+
+    try:
+        porcentaje = Decimal(porcentaje_str)
+    except InvalidOperation:
+        return redirect("recursos:subcontrato_list")
+
+    queryset = Subcontrato.objects.filter(company=request.company, pk__in=ids)
+    Subcontrato.actualizar_precios_por_porcentaje(queryset, porcentaje)
+
+    return redirect("recursos:subcontrato_list")
+
+
+@login_required
+def hoja_subcontrato_list(request):
+    company = request.company
+    if request.method == "POST":
+        nombre = request.POST.get("nombre") or ""
+        origen_tipo = request.POST.get("origen_tipo") or "actual"
+        origen_hoja_id = request.POST.get("origen_hoja") or None
+
+        if not nombre.strip():
+            return redirect("recursos:hoja_subcontrato_list")
+
+        hoja = HojaPreciosSubcontrato.objects.create(
+            nombre=nombre.strip(), company=company
+        )
+
+        if origen_tipo == "actual":
+            subcontratos = Subcontrato.objects.filter(company=company).only(
+                "pk",
+                "cantidad_por_unidad_venta",
+                "precio_unidad_venta",
+                "moneda",
+            )
+            HojaPrecioSubcontrato.objects.bulk_create(
+                [
+                    HojaPrecioSubcontrato(
+                        hoja=hoja,
+                        subcontrato=s,
+                        cantidad_por_unidad_venta=s.cantidad_por_unidad_venta,
+                        precio_unidad_venta=s.precio_unidad_venta,
+                        moneda=s.moneda,
+                    )
+                    for s in subcontratos
+                ]
+            )
+        elif origen_tipo == "hoja" and origen_hoja_id:
+            origen = get_object_or_404(
+                HojaPreciosSubcontrato, pk=origen_hoja_id, company=company
+            )
+            hoja.origen = origen
+            hoja.save(update_fields=["origen"])
+            detalles = origen.detalles.select_related("subcontrato").all()
+            HojaPrecioSubcontrato.objects.bulk_create(
+                [
+                    HojaPrecioSubcontrato(
+                        hoja=hoja,
+                        subcontrato=d.subcontrato,
+                        cantidad_por_unidad_venta=d.cantidad_por_unidad_venta,
+                        precio_unidad_venta=d.precio_unidad_venta,
+                        moneda=d.moneda,
+                    )
+                    for d in detalles
+                ]
+            )
+
+        return redirect("recursos:hoja_subcontrato_list")
+
+    hojas = HojaPreciosSubcontrato.objects.filter(company=company)
+    return render(
+        request,
+        "recursos/hoja_subcontrato_list.html",
+        {"hojas": hojas},
+    )
+
+
+@login_required
+def hoja_subcontrato_detalle(request, pk):
+    hoja = get_object_or_404(HojaPreciosSubcontrato, pk=pk, company=request.company)
+    detalles = hoja.detalles.select_related(
+        "subcontrato",
+        "subcontrato__rubro",
+        "subcontrato__subrubro",
+        "subcontrato__proveedor",
+        "subcontrato__unidad_de_venta",
+    ).all()
+    return render(
+        request,
+        "recursos/hoja_subcontrato_detalle.html",
+        {"hoja": hoja, "detalles": detalles},
+    )
+
+
+@login_required
+def hoja_subcontrato_detalle_edit(request, hoja_pk, detalle_pk):
+    hoja = get_object_or_404(
+        HojaPreciosSubcontrato, pk=hoja_pk, company=request.company
+    )
+    detalle = get_object_or_404(
+        HojaPrecioSubcontrato, pk=detalle_pk, hoja=hoja
+    )
+    if request.method == "POST":
+        form = HojaPrecioSubcontratoForm(request.POST, instance=detalle)
+        if form.is_valid():
+            form.save()
+            return redirect(
+                f"{reverse('recursos:subcontrato_list')}?hoja={hoja_pk}"
+            )
+    return redirect(f"{reverse('recursos:subcontrato_list')}?hoja={hoja_pk}")
+
+
+@login_required
+def hoja_subcontrato_detalle_delete(request, hoja_pk, detalle_pk):
+    hoja = get_object_or_404(
+        HojaPreciosSubcontrato, pk=hoja_pk, company=request.company
+    )
+    detalle = get_object_or_404(
+        HojaPrecioSubcontrato, pk=detalle_pk, hoja=hoja
+    )
+    if request.method == "POST":
+        detalle.delete()
+        return redirect(f"{reverse('recursos:subcontrato_list')}?hoja={hoja_pk}")
+    return redirect(f"{reverse('recursos:subcontrato_list')}?hoja={hoja_pk}")
 

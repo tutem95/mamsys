@@ -27,6 +27,32 @@ urlpatterns = [
         views.mano_de_obra_delete,
         name="mano_de_obra_delete",
     ),
+    path(
+        "mano-de-obra/actualizar-precios/",
+        views.mano_de_obra_bulk_update,
+        name="mano_de_obra_bulk_update",
+    ),
+    # Hojas de precios mano de obra
+    path(
+        "hojas-mano-de-obra/",
+        views.hoja_mano_de_obra_list,
+        name="hoja_mano_de_obra_list",
+    ),
+    path(
+        "hojas-mano-de-obra/<int:pk>/",
+        views.hoja_mano_de_obra_detalle,
+        name="hoja_mano_de_obra_detalle",
+    ),
+    path(
+        "hojas-mano-de-obra/<int:hoja_pk>/detalle/<int:detalle_pk>/editar/",
+        views.hoja_mano_de_obra_detalle_edit,
+        name="hoja_mano_de_obra_detalle_edit",
+    ),
+    path(
+        "hojas-mano-de-obra/<int:hoja_pk>/detalle/<int:detalle_pk>/eliminar/",
+        views.hoja_mano_de_obra_detalle_delete,
+        name="hoja_mano_de_obra_detalle_delete",
+    ),
     # Subcontratos
     path("subcontratos/", views.subcontrato_list, name="subcontrato_list"),
     path(
@@ -39,12 +65,63 @@ urlpatterns = [
         views.subcontrato_delete,
         name="subcontrato_delete",
     ),
+    path(
+        "subcontratos/actualizar-precios/",
+        views.subcontrato_bulk_update,
+        name="subcontrato_bulk_update",
+    ),
+    # Hojas de precios subcontratos
+    path(
+        "hojas-subcontrato/",
+        views.hoja_subcontrato_list,
+        name="hoja_subcontrato_list",
+    ),
+    path(
+        "hojas-subcontrato/<int:pk>/",
+        views.hoja_subcontrato_detalle,
+        name="hoja_subcontrato_detalle",
+    ),
+    path(
+        "hojas-subcontrato/<int:hoja_pk>/detalle/<int:detalle_pk>/editar/",
+        views.hoja_subcontrato_detalle_edit,
+        name="hoja_subcontrato_detalle_edit",
+    ),
+    path(
+        "hojas-subcontrato/<int:hoja_pk>/detalle/<int:detalle_pk>/eliminar/",
+        views.hoja_subcontrato_detalle_delete,
+        name="hoja_subcontrato_detalle_delete",
+    ),
+    # Mezclas
+    path("mezclas/", views.mezcla_list, name="mezcla_list"),
+    path("mezclas/<int:pk>/", views.mezcla_detalle, name="mezcla_detalle"),
+    path("mezclas/<int:pk>/editar/", views.mezcla_edit, name="mezcla_edit"),
+    path("mezclas/<int:pk>/eliminar/", views.mezcla_delete, name="mezcla_delete"),
+    path(
+        "mezclas/<int:pk>/agregar-material/",
+        views.mezcla_material_add,
+        name="mezcla_material_add",
+    ),
+    path(
+        "mezclas/<int:mezcla_pk>/material/<int:detalle_pk>/eliminar/",
+        views.mezcla_material_delete,
+        name="mezcla_material_delete",
+    ),
     # Hojas de precios
     path("hojas-precio/", views.hoja_precios_list, name="hoja_precios_list"),
     path(
         "hojas-precio/<int:pk>/",
         views.hoja_precios_detalle,
         name="hoja_precios_detalle",
+    ),
+    path(
+        "hojas-precio/<int:hoja_pk>/detalle/<int:detalle_pk>/editar/",
+        views.hoja_detalle_edit,
+        name="hoja_detalle_edit",
+    ),
+    path(
+        "hojas-precio/<int:hoja_pk>/detalle/<int:detalle_pk>/eliminar/",
+        views.hoja_detalle_delete,
+        name="hoja_detalle_delete",
     ),
 ]
 

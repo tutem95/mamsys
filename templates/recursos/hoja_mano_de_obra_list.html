@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Hojas de precios · Presupuesto{% endblock %}
+{% block title %}Hojas de precios mano de obra · Presupuesto{% endblock %}
 
 {% block content %}
 <main class="shell">
     <header>
         <div>
-            <h1>Hojas de precios</h1>
-            <p>Crea "hojas" de precios para congelar el valor de los materiales en una fecha determinada.</p>
+            <h1>Hojas de precios mano de obra</h1>
+            <p>Crea "hojas" de precios para congelar el valor de la mano de obra en una fecha determinada.</p>
         </div>
-        <a class="link link-back" href="{% url 'recursos:material_list' %}">← Volver a materiales</a>
+        <a class="link link-back" href="{% url 'recursos:mano_de_obra_list' %}">← Volver a mano de obra</a>
     </header>
 
     <section class="layout">
@@ -24,7 +24,7 @@
                     <strong style="color:var(--title);">Origen de datos:</strong><br>
                     <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-weight:400;">
                         <input type="radio" name="origen_tipo" value="actual" checked>
-                        Copiar de precios actuales (tabla Material)
+                        Copiar de precios actuales (tabla Mano de Obra)
                     </label>
                     <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-weight:400;">
                         <input type="radio" name="origen_tipo" value="hoja">
@@ -59,13 +59,17 @@
                             <td>{{ hoja.nombre }}</td>
                             <td>{{ hoja.creado_en }}</td>
                             <td>{% if hoja.origen %}{{ hoja.origen.nombre }}{% else %}Precios actuales{% endif %}</td>
-                            <td><a href="{% url 'recursos:hoja_precios_detalle' hoja.pk %}">Ver detalle</a></td>
+                            <td>
+                                <a href="{% url 'recursos:hoja_mano_de_obra_detalle' hoja.pk %}">Ver detalle</a>
+                                |
+                                <a href="{% url 'recursos:mano_de_obra_list' %}?hoja={{ hoja.pk }}">Ver hoja</a>
+                            </td>
                         </tr>
                     {% endfor %}
                     </tbody>
                 </table>
             {% else %}
-                <p style="font-size:0.9rem; color:var(--text-muted);">Todavía no hay hojas de precios.</p>
+                <p style="font-size:0.9rem; color:var(--text-muted);">Todavía no hay hojas de precios de mano de obra.</p>
             {% endif %}
         </section>
     </section>

@@ -1,63 +1,310 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Mano de obra · Presupuesto</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-<h1>Mano de obra</h1>
-<p>Definición de puestos, equipo y precios por unidad de análisis.</p>
+{% extends "base.html" %}
+{% block title %}Mano de obra · Presupuesto{% endblock %}
 
-<p><a href="{% url 'general:dashboard' %}">← Volver al panel</a></p>
+{% block extra_css %}
+<style>
+    .filters th { padding-bottom: 6px; }
+    .filters input, .filters select { font-size: 0.85rem; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+</style>
+{% endblock %}
 
-<section>
-    <h2>{% if editing %}Editar puesto{% else %}Nuevo puesto{% endif %}</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Guardar</button>
-    </form>
-</section>
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>Mano de obra</h1>
+            <p>Hoja tipo Excel para editar y filtrar la lista de mano de obra.</p>
+            <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <label for="hoja-select" style="font-size:0.9rem; color:var(--text-muted);">Ver hoja:</label>
+            <select id="hoja-select" style="width:auto; min-width:180px; padding:6px 10px;">
+                <option value="">Precios actuales</option>
+                {% for h in hojas %}
+                    <option value="{{ h.pk }}" {% if hoja_seleccionada and hoja_seleccionada.pk == h.pk %}selected{% endif %}>{{ h.nombre }}</option>
+                {% endfor %}
+            </select>
+            {% if not modo_hoja %}
+            <button class="btn btn-primary" type="button" onclick="mostrarFilaNuevo();">+ Nuevo puesto</button>
+            {% else %}
+            <a href="{% url 'recursos:mano_de_obra_list' %}?hoja={{ hoja_seleccionada.pk }}&agregar=1" class="btn btn-primary">+ Agregar puesto a hoja</a>
+            {% endif %}
+            <a href="{% url 'recursos:hoja_mano_de_obra_list' %}" class="link" style="margin-left:8px;">Ver hojas de precios</a>
+        </div>
+    </header>
 
-<section>
-    <h2>Listado</h2>
-    {% if items %}
-        <table border="1" cellpadding="4">
-            <thead>
-            <tr>
-                <th>#</th>
-                <th>Puesto</th>
-                <th>Equipo</th>
-                <th>Unidad análisis</th>
-                <th>Precio por unidad</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody>
+    <section class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <small style="color:var(--text-muted);">Filtrá por cualquiera de las columnas escribiendo en la fila de filtros.</small>
+            {% if hoja_seleccionada %}
+            <small style="color:var(--accent);">Editando hoja «{{ hoja_seleccionada.nombre }}».</small>
+            {% endif %}
+        </div>
+
+        <div style="overflow-x:auto;">
+            {% if modo_hoja %}
+            <div id="tabla-wrapper">
+            {% else %}
+            <form method="post" action="{% url 'recursos:mano_de_obra_bulk_update' %}" id="bulk-form">
+                {% csrf_token %}
+            {% endif %}
+                <table id="tabla-mano-de-obra">
+                    <thead>
+                    <tr>
+                        <th>{% if not modo_hoja %}<input type="checkbox" id="select-all">{% endif %}</th>
+                        <th>#</th>
+                        <th>Rubro</th>
+                        <th>Subrubro</th>
+                        <th>Tarea</th>
+                        <th>Equipo</th>
+                        <th>Ref. Equipo</th>
+                        <th class="num">Cant. UV</th>
+                        <th>UV</th>
+                        <th class="num">Precio UV</th>
+                        <th class="num">Precio UA</th>
+                        <th></th>
+                    </tr>
+                    <tr class="filters">
+                        <th></th>
+                        <th></th>
+                        <th><input type="text" data-col="2" placeholder="Filtrar rubro"></th>
+                        <th><input type="text" data-col="3" placeholder="Filtrar subrubro"></th>
+                        <th><input type="text" data-col="4" placeholder="Filtrar tarea"></th>
+                        <th><input type="text" data-col="5" placeholder="Filtrar equipo"></th>
+                        <th><input type="text" data-col="6" placeholder="Filtrar ref."></th>
+                        <th><input type="text" data-col="7" placeholder="Filtrar cant."></th>
+                        <th><input type="text" data-col="8" placeholder="Filtrar UV"></th>
+                        <th><input type="text" data-col="9" placeholder="Filtrar precio"></th>
+                        <th><input type="text" data-col="10" placeholder="Filtrar UA"></th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% if items %}
+                        {% if modo_hoja %}
+                            {% for detalle in items %}
+                            <tr>
+                                <td></td>
+                                <td>{{ forloop.counter }}</td>
+                                {% if editing_hoja and editing_hoja.pk == detalle.pk %}
+                                <form method="post" action="{% url 'recursos:hoja_mano_de_obra_detalle_edit' hoja_seleccionada.pk detalle.pk %}">
+                                    {% csrf_token %}
+                                    <td>{{ detalle.mano_de_obra.rubro }}</td>
+                                    <td>{{ detalle.mano_de_obra.subrubro }}</td>
+                                    <td>{{ detalle.mano_de_obra.tarea }}</td>
+                                    <td>{{ detalle.mano_de_obra.equipo }}</td>
+                                    <td>{{ detalle.mano_de_obra.ref_equipo }}</td>
+                                    <td>{{ form_hoja_detalle.cantidad_por_unidad_venta }}</td>
+                                    <td>{{ detalle.mano_de_obra.unidad_de_venta }}</td>
+                                    <td>{{ form_hoja_detalle.precio_unidad_venta }}</td>
+                                    <td class="num">{{ detalle.precio_por_unidad_analisis|floatformat:2 }}</td>
+                                    <td class="actions">
+                                        <button type="submit" class="btn-link">Guardar</button> |
+                                        <a href="{% url 'recursos:mano_de_obra_list' %}?hoja={{ hoja_seleccionada.pk }}" class="btn-link">Cancelar</a>
+                                    </td>
+                                </form>
+                                {% else %}
+                                <td>{{ detalle.mano_de_obra.rubro }}</td>
+                                <td>{{ detalle.mano_de_obra.subrubro }}</td>
+                                <td>{{ detalle.mano_de_obra.tarea }}</td>
+                                <td>{{ detalle.mano_de_obra.equipo }}</td>
+                                <td>{{ detalle.mano_de_obra.ref_equipo }}</td>
+                                <td class="num">{{ detalle.cantidad_por_unidad_venta|floatformat:2 }}</td>
+                                <td>{{ detalle.mano_de_obra.unidad_de_venta }}</td>
+                                <td class="num">{{ detalle.precio_unidad_venta|floatformat:2 }}</td>
+                                <td class="num">{{ detalle.precio_por_unidad_analisis|floatformat:2 }}</td>
+                                <td class="actions">
+                                    <a href="{% url 'recursos:mano_de_obra_list' %}?hoja={{ hoja_seleccionada.pk }}&editar={{ detalle.pk }}" class="btn-link">Editar</a> |
+                                    <form action="{% url 'recursos:hoja_mano_de_obra_detalle_delete' hoja_seleccionada.pk detalle.pk %}" method="post" style="display:inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Quitar este puesto de la hoja?');">Quitar</button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            {% for item in items %}
+                            <tr>
+                                <td><input type="checkbox" name="selected_ids" value="{{ item.pk }}"></td>
+                                <td>{{ forloop.counter }}</td>
+                            {% if editing and editing.pk == item.pk %}
+                                <form method="post" action="{% url 'recursos:mano_de_obra_edit' item.pk %}">
+                                    {% csrf_token %}
+                                    <td>{{ form_edit.rubro }}</td>
+                                    <td>{{ form_edit.subrubro }}</td>
+                                    <td>{{ form_edit.tarea }}</td>
+                                    <td>{{ form_edit.equipo }}</td>
+                                    <td>{{ form_edit.ref_equipo }}</td>
+                                    <td>{{ form_edit.cantidad_por_unidad_venta }}</td>
+                                    <td>{{ form_edit.unidad_de_venta }}</td>
+                                    <td>{{ form_edit.precio_unidad_venta }}</td>
+                                    <td class="num">{{ editing.precio_por_unidad_analisis|floatformat:2 }}</td>
+                                    <td class="actions">
+                                        <button type="submit" class="btn-link">Guardar</button> |
+                                        <a href="{% url 'recursos:mano_de_obra_list' %}">Cancelar</a>
+                                    </td>
+                                </form>
+                            {% else %}
+                                <td>{{ item.rubro }}</td>
+                                <td>{{ item.subrubro }}</td>
+                                <td>{{ item.tarea }}</td>
+                                <td>{{ item.equipo }}</td>
+                                <td>{{ item.ref_equipo }}</td>
+                                <td class="num">{{ item.cantidad_por_unidad_venta|floatformat:2 }}</td>
+                                <td>{{ item.unidad_de_venta }}</td>
+                                <td class="num">{{ item.precio_unidad_venta|floatformat:2 }}</td>
+                                <td class="num">{{ item.precio_por_unidad_analisis|floatformat:2 }}</td>
+                                <td class="actions">
+                                    <a href="{% url 'recursos:mano_de_obra_edit' item.pk %}" class="btn-link">Editar</a> |
+                                    <button type="submit" form="form-delete-{{ item.pk }}" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este puesto?');">Eliminar</button>
+                                </td>
+                            {% endif %}
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    {% else %}
+                        <tr>
+                            <td colspan="12">No hay puestos de mano de obra cargados.</td>
+                        </tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+
+                {% if not modo_hoja %}
+                <div style="margin-top: 14px; display:flex; align-items:center; gap:8px; font-size:0.9rem;">
+                    <span>Actualizar precios de seleccionados en un</span>
+                    <input type="number" name="porcentaje" step="0.01" min="0" style="width:90px;" value="0.00">
+                    <span>%</span>
+                    <button type="submit" class="btn btn-primary" style="padding:6px 14px;">Actualizar precios</button>
+                </div>
+                {% endif %}
+            {% if modo_hoja %}
+            </div>
+            {% else %}
+            </form>
+            {% endif %}
+        </div>
+
+        {% if not modo_hoja and items %}
+        <div style="display:none;" aria-hidden="true">
             {% for item in items %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ item.descripcion_puesto }}</td>
-                    <td>{{ item.equipo }}</td>
-                    <td>{{ item.unidad_de_analisis }}</td>
-                    <td>{{ item.precio_por_unidad }}</td>
-                    <td>
-                        <a href="{% url 'recursos:mano_de_obra_edit' item.pk %}">Editar</a>
-                        |
-                        <form action="{% url 'recursos:mano_de_obra_delete' item.pk %}" method="post" style="display:inline">
-                            {% csrf_token %}
-                            <button type="submit" onclick="return confirm('¿Eliminar este puesto?');">Eliminar</button>
-                        </form>
-                    </td>
-                </tr>
+            <form id="form-delete-{{ item.pk }}" method="post" action="{% url 'recursos:mano_de_obra_delete' item.pk %}">
+                {% csrf_token %}
+            </form>
             {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>No hay puestos de mano de obra cargados.</p>
-    {% endif %}
-</section>
-</body>
-</html>
+        </div>
+        {% endif %}
 
+        {% if not modo_hoja %}
+        <div id="card-nuevo-puesto" style="display:none; margin-top:12px;">
+            <form method="post" action="{% url 'recursos:mano_de_obra_list' %}" id="form-nuevo-puesto" class="card">
+                {% csrf_token %}
+                <h3 style="margin:0 0 12px;">Nuevo puesto de mano de obra</h3>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                    <div class="field"><label for="id_rubro">Rubro</label>{{ form_new.rubro }}</div>
+                    <div class="field"><label for="id_subrubro">Subrubro</label>{{ form_new.subrubro }}</div>
+                    <div class="field"><label for="id_tarea">Tarea</label>{{ form_new.tarea }}</div>
+                    <div class="field"><label for="id_equipo">Equipo</label>{{ form_new.equipo }}</div>
+                    <div class="field"><label for="id_ref_equipo">Ref. Equipo</label>{{ form_new.ref_equipo }}</div>
+                    <div class="field"><label for="id_cantidad_por_unidad_venta">Cant. UV</label>{{ form_new.cantidad_por_unidad_venta }}</div>
+                    <div class="field"><label for="id_unidad_de_venta">Unidad venta</label>{{ form_new.unidad_de_venta }}</div>
+                    <div class="field"><label for="id_precio_unidad_venta">Precio UV</label>{{ form_new.precio_unidad_venta }}</div>
+                </div>
+                <div style="margin-top:12px;"><button type="submit" class="btn btn-primary">Guardar</button> <button type="button" class="btn-link btn-danger" onclick="ocultarFilaNuevo();">Cancelar</button></div>
+            </form>
+        </div>
+        {% endif %}
+    </section>
+
+    {% if modo_hoja and items_no_en_hoja is not None %}
+    <section class="card" style="margin-top:16px;">
+        <h3 style="margin:0 0 12px;">Agregar puesto a la hoja</h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin:0 0 12px;">Elegí un puesto para agregarlo a la hoja «{{ hoja_seleccionada.nombre }}»:</p>
+        <form method="post" action="{% url 'recursos:mano_de_obra_list' %}?hoja={{ hoja_seleccionada.pk }}&agregar=1">
+            {% csrf_token %}
+            <table style="margin-bottom:12px;">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Rubro</th>
+                    <th>Subrubro</th>
+                    <th>Tarea</th>
+                    <th>Equipo</th>
+                    <th>Ref. Equipo</th>
+                    <th class="num">Precio actual</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for s in items_no_en_hoja %}
+                <tr>
+                    <td><input type="radio" name="mano_de_obra_id" value="{{ s.pk }}" required></td>
+                    <td>{{ s.rubro }}</td>
+                    <td>{{ s.subrubro }}</td>
+                    <td>{{ s.tarea }}</td>
+                    <td>{{ s.equipo }}</td>
+                    <td>{{ s.ref_equipo }}</td>
+                    <td class="num">{{ s.precio_unidad_venta|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7">Todos los puestos ya están en la hoja.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% if items_no_en_hoja %}
+            <button type="submit" class="btn btn-primary">Agregar a la hoja</button>
+            {% endif %}
+            <a href="{% url 'recursos:mano_de_obra_list' %}?hoja={{ hoja_seleccionada.pk }}" class="btn-link" style="margin-left:8px;">Cancelar</a>
+        </form>
+    </section>
+    {% endif %}
+</main>
+
+<script>
+    document.getElementById('hoja-select').addEventListener('change', function () {
+        var base = "{% url 'recursos:mano_de_obra_list' %}";
+        var pk = this.value;
+        window.location = pk ? base + "?hoja=" + encodeURIComponent(pk) : base;
+    });
+
+    function mostrarFilaNuevo() {
+        const card = document.getElementById('card-nuevo-puesto');
+        if (card) {
+            card.style.display = '';
+            const inputNombre = card.querySelector('input[type="text"], select');
+            if (inputNombre) inputNombre.focus();
+            card.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        }
+    }
+
+    function ocultarFilaNuevo() {
+        const card = document.getElementById('card-nuevo-puesto');
+        if (card) card.style.display = 'none';
+    }
+
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            const checked = this.checked;
+            document.querySelectorAll('#tabla-mano-de-obra tbody input[type="checkbox"][name="selected_ids"]').forEach(function (cb) {
+                if (cb.closest('tr').style.display !== 'none') cb.checked = checked;
+            });
+        });
+    }
+
+    document.querySelectorAll('.filters input').forEach(function (input) {
+        input.addEventListener('input', function () {
+            const col = parseInt(this.getAttribute('data-col'), 10);
+            const value = this.value.toLowerCase();
+            document.querySelectorAll('#tabla-mano-de-obra tbody tr').forEach(function (row) {
+                const cell = row.children[col];
+                if (!cell) return;
+                row.style.display = cell.textContent.toLowerCase().indexOf(value) !== -1 ? '' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

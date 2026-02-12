@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Sin acceso · Presupuesto{% endblock %}
+{% block body_class %}body-center{% endblock %}
+
+{% block content %}
+<main class="card" style="max-width:420px;">
+    <h1>Sin acceso a ninguna empresa</h1>
+    <p>Tu usuario no está asociado a ninguna empresa. Pedí al administrador que te asigne una.</p>
+    <a href="{% url 'usuarios:logout' %}">Cerrar sesión</a>
+</main>
+{% endblock %}

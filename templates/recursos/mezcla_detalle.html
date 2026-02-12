@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ mezcla.nombre }} · Presupuesto{% endblock %}
+
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>{{ mezcla.nombre }}</h1>
+            <p>
+                Hoja: {% if mezcla.hoja %}{{ mezcla.hoja.nombre }}{% else %}Precios actuales{% endif %}
+                · Unidad: {{ mezcla.unidad_de_mezcla }}
+            </p>
+        </div>
+        <a class="link link-back" href="{% url 'recursos:mezcla_list' %}{% if mezcla.hoja %}?hoja={{ mezcla.hoja.pk }}{% endif %}">← Volver a mezclas</a>
+        <a href="{% url 'recursos:mezcla_edit' mezcla.pk %}" class="btn-link">Editar</a>
+        <a href="{% url 'recursos:mezcla_material_add' mezcla.pk %}" class="btn btn-primary">+ Agregar material</a>
+    </header>
+
+    <section class="card">
+        <h2 style="margin:0 0 12px;">Composición de la mezcla</h2>
+        {% if detalles %}
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Material</th>
+                    <th>Proveedor</th>
+                    <th class="num">Cant. análisis</th>
+                    <th>Unidad análisis</th>
+                    <th class="num">Precio análisis</th>
+                    <th class="num">Subtotal</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for detalle in detalles %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ detalle.material.nombre }}</td>
+                    <td>{{ detalle.material.proveedor|default:"-" }}</td>
+                    <td class="num">{{ detalle.cantidad|floatformat:2 }}</td>
+                    <td>{{ detalle.material.unidad_de_venta }}</td>
+                    <td class="num">{{ detalle.precio_unidad_desde_hoja|floatformat:2 }}</td>
+                    <td class="num">{{ detalle.costo_en_hoja|floatformat:2 }}</td>
+                    <td>
+                        <form action="{% url 'recursos:mezcla_material_delete' mezcla.pk detalle.pk %}" method="post" style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Quitar este material de la mezcla?');">Quitar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+                <tfoot>
+                <tr style="font-weight:600; border-top:2px solid var(--border);">
+                    <td colspan="6" style="text-align:right;">Total (Precio UM):</td>
+                    <td class="num">{{ total|floatformat:2 }}</td>
+                    <td></td>
+                </tr>
+                </tfoot>
+            </table>
+        {% else %}
+            <p style="font-size:0.9rem; color:var(--text-muted);">Esta mezcla no tiene materiales. Agregá materiales para calcular el costo.</p>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

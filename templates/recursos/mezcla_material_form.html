@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Agregar material a {{ mezcla.nombre }} · Presupuesto{% endblock %}
+
+{% block content %}
+<main class="shell">
+    <header>
+        <div>
+            <h1>Agregar material a {{ mezcla.nombre }}</h1>
+            <p>Materiales {% if mezcla.hoja %}de la hoja {{ mezcla.hoja.nombre }}{% else %}con precios actuales{% endif %}.</p>
+        </div>
+        <a class="link link-back" href="{% url 'recursos:mezcla_detalle' mezcla.pk %}">← Volver al detalle</a>
+    </header>
+
+    <section class="card">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">Agregar</button>
+            <a href="{% url 'recursos:mezcla_detalle' mezcla.pk %}" class="btn-link">Cancelar</a>
+        </form>
+    </section>
+</main>
+{% endblock %}
