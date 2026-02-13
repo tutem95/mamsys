@@ -9,7 +9,7 @@
 
     <form method="post" style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
         {% csrf_token %}
-        <a href="{% url cancel_url %}" class="btn" style="border:1px solid var(--border); background:transparent; color:var(--text); text-decoration:none;">Cancelar</a>
+        <a href="{% if cancel_link %}{{ cancel_link }}{% else %}{% url cancel_url %}{% endif %}" class="btn" style="border:1px solid var(--border); background:transparent; color:var(--text); text-decoration:none;">Cancelar</a>
         <button type="submit" class="btn btn-primary" style="background:linear-gradient(135deg, var(--danger-soft), var(--danger));">Eliminar</button>
     </form>
 </main>

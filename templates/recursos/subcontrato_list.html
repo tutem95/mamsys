@@ -14,6 +14,7 @@
 
 {% block content %}
 <main class="shell">
+    {% include "recursos/includes/lote_nav_tabs.html" %}
     <header>
         <div>
             <h1>Subcontratos</h1>
@@ -25,10 +26,9 @@
             {% endif %}
         </div>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            {% if not modo_hoja %}
             <button class="btn btn-primary" type="button" onclick="mostrarFilaNuevo();">+ Nuevo subcontrato</button>
-            {% else %}
-            <a href="{% url 'recursos:subcontrato_list' %}?hoja={{ hoja_seleccionada.pk }}&agregar=1" class="btn btn-primary">+ Agregar subcontrato a hoja</a>
+            {% if modo_hoja %}
+            <a href="{% url 'recursos:subcontrato_list' %}?hoja={{ hoja_seleccionada.pk }}&agregar=1" class="btn" style="border:1px solid var(--border); background:transparent;">Agregar subcontrato existente a la hoja</a>
             {% endif %}
         </div>
     </header>
@@ -189,11 +189,10 @@
         </div>
         {% endif %}
 
-        {% if not modo_hoja %}
         <div id="card-nuevo-subcontrato" style="display:none; margin-top:12px;">
-            <form method="post" action="{% url 'recursos:subcontrato_list' %}" id="form-nuevo-subcontrato" class="card">
+            <form method="post" action="{% if hoja_seleccionada %}{% url 'recursos:subcontrato_list' %}?hoja={{ hoja_seleccionada.pk }}{% else %}{% url 'recursos:subcontrato_list' %}{% endif %}" id="form-nuevo-subcontrato" class="card">
                 {% csrf_token %}
-                <h3 style="margin:0 0 12px;">Nuevo subcontrato</h3>
+                <h3 style="margin:0 0 12px;">Nuevo subcontrato{% if hoja_seleccionada %} (se agrega a la hoja «{{ hoja_seleccionada.nombre }}»){% endif %}</h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
                     <div class="field"><label for="id_rubro">Rubro</label>{{ form_new.rubro }}</div>
                     <div class="field"><label for="id_subrubro">Subrubro</label>{{ form_new.subrubro }}</div>
@@ -207,7 +206,6 @@
                 <div style="margin-top:12px;"><button type="submit" class="btn btn-primary">Guardar</button> <button type="button" class="btn-link btn-danger" onclick="ocultarFilaNuevo();">Cancelar</button></div>
             </form>
         </div>
-        {% endif %}
     </section>
 
     {% if modo_hoja and subcontratos_no_en_hoja is not None %}

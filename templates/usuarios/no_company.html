@@ -9,6 +9,9 @@
 <main class="card" style="max-width:420px;">
     <h1>Sin acceso a ninguna empresa</h1>
     <p>Tu usuario no está asociado a ninguna empresa. Pedí al administrador que te asigne una.</p>
-    <a href="{% url 'usuarios:logout' %}">Cerrar sesión</a>
+    <form method="post" action="{% url 'usuarios:logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn-link">Cerrar sesión</button>
+    </form>
 </main>
 {% endblock %}

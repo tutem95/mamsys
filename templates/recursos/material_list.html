@@ -14,6 +14,7 @@
 
 {% block content %}
 <main class="shell">
+    {% include "recursos/includes/lote_nav_tabs.html" %}
     <header>
         <div>
             <h1>Materiales</h1>
@@ -25,10 +26,9 @@
             {% endif %}
         </div>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            {% if not modo_hoja %}
             <button class="btn btn-primary" type="button" onclick="mostrarFilaNuevo();">+ Nuevo material</button>
-            {% else %}
-            <a href="{% url 'recursos:material_list' %}?hoja={{ hoja_seleccionada.pk }}&agregar=1" class="btn btn-primary">+ Agregar material a hoja</a>
+            {% if modo_hoja %}
+            <a href="{% url 'recursos:material_list' %}?hoja={{ hoja_seleccionada.pk }}&agregar=1" class="btn" style="border:1px solid var(--border); background:transparent;">Agregar material existente a la hoja</a>
             {% endif %}
         </div>
     </header>
@@ -189,11 +189,10 @@
         </div>
         {% endif %}
 
-        {% if not modo_hoja %}
         <div id="card-nuevo-material" style="display:none; margin-top:12px;">
-            <form method="post" action="{% url 'recursos:material_list' %}" id="form-nuevo-material" class="card">
+            <form method="post" action="{% if hoja_seleccionada %}{% url 'recursos:material_list' %}?hoja={{ hoja_seleccionada.pk }}{% else %}{% url 'recursos:material_list' %}{% endif %}" id="form-nuevo-material" class="card">
                 {% csrf_token %}
-                <h3 style="margin:0 0 12px;">Nuevo material</h3>
+                <h3 style="margin:0 0 12px;">Nuevo material{% if hoja_seleccionada %} (se agrega a la hoja «{{ hoja_seleccionada.nombre }}»){% endif %}</h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
                     <div class="field"><label for="id_nombre">Nombre</label>{{ form_new.nombre }}</div>
                     <div class="field"><label for="id_proveedor">Proveedor</label>{{ form_new.proveedor }}</div>
@@ -207,7 +206,6 @@
                 <div style="margin-top:12px;"><button type="submit" class="btn btn-primary">Guardar</button> <button type="button" class="btn-link btn-danger" onclick="ocultarFilaNuevo();">Cancelar</button></div>
             </form>
         </div>
-        {% endif %}
     </section>
 
     {% if modo_hoja and materiales_no_en_hoja is not None %}
@@ -236,7 +234,7 @@
                     <td class="num">{{ m.precio_unidad_venta|floatformat:2 }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5">Todos los materiales ya están en la hoja.</td></tr>
+                <tr><td colspan="5">No hay materiales para agregar. Si la hoja está vacía, creá materiales antes desde esta misma página (quitá la hoja del selector arriba y usá «+ Nuevo material»).</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -249,6 +247,10 @@
     {% endif %}
 </main>
 
+{% if categorias_by_tipo %}
+{{ categorias_by_tipo|json_script:"categorias-by-tipo" }}
+{% endif %}
+
 <script>
     (function () {
         var el = document.getElementById('hoja-select');
@@ -257,6 +259,42 @@
             var pk = this.value;
             window.location = pk ? base + "?hoja=" + encodeURIComponent(pk) : base;
         });
+    })();
+
+    (function () {
+        var scriptEl = document.getElementById('categorias-by-tipo');
+        if (!scriptEl) return;
+        var categoriasByTipo = JSON.parse(scriptEl.textContent);
+        var form = document.getElementById('form-nuevo-material');
+        if (!form) return;
+        var tipoSelect = form.querySelector('select[name="tipo"]');
+        var categoriaSelect = form.querySelector('select[name="categoria"]');
+        if (!tipoSelect || !categoriaSelect) return;
+
+        function actualizarCategoria() {
+            var tipoPk = tipoSelect.value;
+            var prevCat = categoriaSelect.value;
+            var opts = categoriasByTipo[tipoPk];
+            categoriaSelect.innerHTML = '';
+            var first = document.createElement('option');
+            first.value = '';
+            first.textContent = opts && opts.length ? '— Elegí categoría —' : '— No hay categorías para este tipo —';
+            categoriaSelect.appendChild(first);
+            if (opts) {
+                opts.forEach(function (c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.nombre;
+                    categoriaSelect.appendChild(opt);
+                });
+            }
+            if (prevCat && categoriaSelect.querySelector('option[value="' + prevCat + '"]')) {
+                categoriaSelect.value = prevCat;
+            }
+        }
+
+        tipoSelect.addEventListener('change', actualizarCategoria);
+        actualizarCategoria();
     })();
 
     function mostrarFilaNuevo() {

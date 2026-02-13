@@ -1,0 +1,13 @@
+{% comment %}
+Pestañas tipo "archivos" para cambiar entre secciones del lote.
+Requiere: lote, lote_nav_active ('maestro_tareas' | 'materiales' | 'mano_obra' | 'subcontratos' | 'mezclas')
+{% endcomment %}
+{% if lote and lote_nav_active %}
+<nav class="lote-nav-tabs" aria-label="Secciones del lote">
+    <a href="{% url 'recursos:tarea_list' lote.pk %}" class="lote-tab lote-tab-maestro {% if lote_nav_active == 'maestro_tareas' %}active{% endif %}">Maestro Tareas</a>
+    <a href="{% url 'recursos:material_list' %}?hoja={{ lote.hoja_materiales_id }}" class="lote-tab {% if lote_nav_active == 'materiales' %}active{% endif %}">Materiales</a>
+    <a href="{% url 'recursos:mano_de_obra_list' %}?hoja={{ lote.hoja_mano_de_obra_id }}" class="lote-tab {% if lote_nav_active == 'mano_obra' %}active{% endif %}">Mano de obra</a>
+    <a href="{% url 'recursos:subcontrato_list' %}?hoja={{ lote.hoja_subcontratos_id }}" class="lote-tab {% if lote_nav_active == 'subcontratos' %}active{% endif %}">Subcontratos</a>
+    <a href="{% url 'recursos:mezcla_list' %}?hoja={{ lote.hoja_materiales_id }}" class="lote-tab {% if lote_nav_active == 'mezclas' %}active{% endif %}">Mezclas</a>
+</nav>
+{% endif %}

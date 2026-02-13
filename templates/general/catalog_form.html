@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · Presupuesto{% endblock %}
+
+{% block content %}
+<div class="shell">
+    <header>
+        <div class="title-block">
+            <h1>{{ page_title }}</h1>
+        </div>
+        <a class="link link-back" href="{{ cancel_url }}">← Volver al listado</a>
+    </header>
+
+    <section class="card" style="max-width:560px;">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <a href="{{ cancel_url }}" class="link">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}

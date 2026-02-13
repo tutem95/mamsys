@@ -2,57 +2,50 @@
 {% block title %}Categorías de material · Presupuesto{% endblock %}
 
 {% block content %}
-<main class="shell">
+<div class="shell">
     <header>
         <div>
             <h1>Categorías de material</h1>
             <p>Agrupación fina de materiales dentro de cada tipo.</p>
         </div>
-        <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <a class="btn btn-primary" href="{% url 'general:categoria_material_add' %}">+ Agregar categoría</a>
+            <a class="link link-back" href="{% url 'general:indice' %}">← Volver al índice</a>
+        </div>
     </header>
 
-    <section class="layout">
-        <section class="card">
-            <h2>{% if editing %}Editar categoría{% else %}Nueva categoría{% endif %}</h2>
-            <form method="post">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <button type="submit" class="btn btn-primary">Guardar</button>
-            </form>
-        </section>
-
-        <section class="card">
-            <h2>Listado</h2>
-            {% if categorias %}
-                <table>
-                    <thead>
+    <section class="card">
+        {% if categorias %}
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tipo</th>
+                    <th>Nombre</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for categoria in categorias %}
                     <tr>
-                        <th>#</th>
-                        <th>Nombre</th>
-                        <th></th>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ categoria.tipo.nombre }}</td>
+                        <td>{{ categoria.nombre }}</td>
+                        <td class="actions">
+                            <a href="{% url 'general:categoria_material_edit' categoria.pk %}" class="btn-link">Editar</a>
+                            |
+                            <form action="{% url 'general:categoria_material_delete' categoria.pk %}" method="post" style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar esta categoría?');">Eliminar</button>
+                            </form>
+                        </td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for categoria in categorias %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ categoria.nombre }}</td>
-                            <td class="actions">
-                                <a href="{% url 'general:categoria_material_edit' categoria.pk %}" class="btn-link">Editar</a>
-                                |
-                                <form action="{% url 'general:categoria_material_delete' categoria.pk %}" method="post" style="display:inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar esta categoría?');">Eliminar</button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p style="font-size:0.9rem; color:var(--text-muted);">No hay categorías de material cargadas.</p>
-            {% endif %}
-        </section>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="font-size:0.9rem; color:var(--text-muted);">No hay categorías de material cargadas.</p>
+        {% endif %}
     </section>
-</main>
+</div>
 {% endblock %}

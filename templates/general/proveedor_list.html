@@ -2,61 +2,52 @@
 {% block title %}Proveedores · Presupuesto{% endblock %}
 
 {% block content %}
-<main class="shell">
+<div class="shell">
     <header>
         <div>
             <h1>Proveedores</h1>
             <p>Gestión de proveedores de materiales y servicios.</p>
         </div>
-        <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <a class="btn btn-primary" href="{% url 'general:proveedor_add' %}">+ Agregar proveedor</a>
+            <a class="link link-back" href="{% url 'general:indice' %}">← Volver al índice</a>
+        </div>
     </header>
 
-    <section class="layout">
-        <section class="card">
-            <h2>{% if editing %}Editar proveedor{% else %}Nuevo proveedor{% endif %}</h2>
-            <form method="post">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <button type="submit" class="btn btn-primary">Guardar</button>
-            </form>
-        </section>
-
-        <section class="card">
-            <h2>Listado</h2>
-            {% if proveedores %}
-                <table>
-                    <thead>
+    <section class="card">
+        {% if proveedores %}
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for proveedor in proveedores %}
                     <tr>
-                        <th>#</th>
-                        <th>Nombre</th>
-                        <th>Teléfono</th>
-                        <th>Email</th>
-                        <th></th>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ proveedor.nombre }}</td>
+                        <td>{{ proveedor.telefono }}</td>
+                        <td>{{ proveedor.email }}</td>
+                        <td class="actions">
+                            <a href="{% url 'general:proveedor_edit' proveedor.pk %}" class="btn-link">Editar</a>
+                            |
+                            <form action="{% url 'general:proveedor_delete' proveedor.pk %}" method="post" style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este proveedor?');">Eliminar</button>
+                            </form>
+                        </td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for proveedor in proveedores %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ proveedor.nombre }}</td>
-                            <td>{{ proveedor.telefono }}</td>
-                            <td>{{ proveedor.email }}</td>
-                            <td class="actions">
-                                <a href="{% url 'general:proveedor_edit' proveedor.pk %}" class="btn-link">Editar</a>
-                                |
-                                <form action="{% url 'general:proveedor_delete' proveedor.pk %}" method="post" style="display:inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este proveedor?');">Eliminar</button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p style="font-size:0.9rem; color:var(--text-muted);">No hay proveedores cargados.</p>
-            {% endif %}
-        </section>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="font-size:0.9rem; color:var(--text-muted);">No hay proveedores cargados.</p>
+        {% endif %}
     </section>
-</main>
+</div>
 {% endblock %}

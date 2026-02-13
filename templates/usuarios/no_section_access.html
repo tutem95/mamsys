@@ -11,6 +11,9 @@
     <p>Tu usuario no tiene permiso para acceder a esta parte de la aplicación. Pedí al administrador de la empresa que te asigne el acceso.</p>
     <a href="{% url 'usuarios:company_select' %}">Cambiar empresa</a>
     <span style="margin:0 8px;">·</span>
-    <a href="{% url 'usuarios:logout' %}">Cerrar sesión</a>
+    <form method="post" action="{% url 'usuarios:logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn-link">Cerrar sesión</button>
+    </form>
 </main>
 {% endblock %}

@@ -21,18 +21,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-c(4#%5*76i36f5i+0998m844ut&pyt2ncrf7x&no4(z)fu0&*u",
-)
+_DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
+if _DEBUG:
+    SECRET_KEY = os.environ.get(
+        "DJANGO_SECRET_KEY",
+        "django-insecure-c(4#%5*76i36f5i+0998m844ut&pyt2ncrf7x&no4(z)fu0&*u",
+    )
+else:
+    SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+    if not SECRET_KEY:
+        raise ValueError(
+            "DJANGO_SECRET_KEY debe estar definido en producción. "
+            "No uses la clave por defecto en entornos reales."
+        )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
+DEBUG = _DEBUG
 
-ALLOWED_HOSTS = [
-    h.strip() for h in (os.environ.get("DJANGO_ALLOWED_HOSTS") or "").split(",")
-    if h.strip()
-]
+# En desarrollo sin DJANGO_ALLOWED_HOSTS se permiten localhost; en producción hay que definir DJANGO_ALLOWED_HOSTS.
+_hosts = [h.strip() for h in (os.environ.get("DJANGO_ALLOWED_HOSTS") or "").split(",") if h.strip()]
+if _hosts:
+    ALLOWED_HOSTS = _hosts
+elif DEBUG:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+else:
+    raise ValueError(
+        "DJANGO_ALLOWED_HOSTS debe estar definido en producción (ej: .com,.ejemplo.com)."
+    )
 
 
 # Application definition
@@ -151,3 +166,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'usuarios:login'
 LOGIN_REDIRECT_URL = 'general:dashboard'
 LOGOUT_REDIRECT_URL = 'usuarios:login'
+
+# Cabeceras y cookies de seguridad en producción (HTTPS)
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Descomentar y usar True cuando se sirva por HTTPS:
+    # SESSION_COOKIE_SECURE = True
+    # CSRF_COOKIE_SECURE = True
+    # SECURE_SSL_REDIRECT = True

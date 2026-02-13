@@ -5,6 +5,20 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from general.models import CategoriaMaterial, TipoMaterial
+
+
+def _categorias_por_tipo(company):
+    """Dict tipo_pk -> [{id, nombre}, ...] para filtrar categorías por tipo en el form de material."""
+    result = {}
+    for t in TipoMaterial.objects.filter(company=company).order_by("nombre"):
+        result[str(t.pk)] = [
+            {"id": c.pk, "nombre": c.nombre}
+            for c in CategoriaMaterial.objects.filter(company=company, tipo=t).order_by("nombre")
+        ]
+    return result
+
+
 from .forms import (
     HojaPrecioMaterialForm,
     HojaPrecioManoDeObraForm,
@@ -92,13 +106,36 @@ def material_list(request):
             else:
                 form_hoja_detalle = HojaPrecioMaterialForm(instance=editing_hoja)
 
-        form_new = MaterialForm(request=request)
+        # Nuevo material desde la hoja: crear en catálogo y agregar a esta hoja
+        if request.method == "POST" and not agregar:
+            form_new = MaterialForm(request.POST, request=request)
+            if form_new.is_valid():
+                obj = form_new.save(commit=False)
+                obj.company = company
+                obj.save()
+                HojaPrecioMaterial.objects.create(
+                    hoja=hoja_seleccionada,
+                    material=obj,
+                    cantidad_por_unidad_venta=obj.cantidad_por_unidad_venta,
+                    precio_unidad_venta=obj.precio_unidad_venta,
+                    moneda=obj.moneda,
+                )
+                return redirect(f"{reverse('recursos:material_list')}?hoja={hoja_id}")
+        else:
+            form_new = MaterialForm(request=request)
+
         materiales_no_en_hoja = None
         if agregar:
-            ids_en_hoja = hoja_seleccionada.detalles.values_list("material_id", flat=True)
-            materiales_no_en_hoja = Material.objects.filter(company=company).exclude(
-                pk__in=ids_en_hoja
-            ).select_related("proveedor", "tipo", "categoria", "unidad_de_venta")
+            ids_en_hoja = set(
+                hoja_seleccionada.detalles.values_list("material_id", flat=True)
+            )
+            todos = list(
+                Material.objects.filter(company=company)
+                .select_related("proveedor", "tipo", "categoria", "unidad_de_venta")
+            )
+            materiales_no_en_hoja = (
+                [m for m in todos if m.pk not in ids_en_hoja] if ids_en_hoja else todos
+            )
 
         lote = Lote.objects.filter(hoja_materiales=hoja_seleccionada).first()
         return render(
@@ -114,6 +151,8 @@ def material_list(request):
                 "form_hoja_detalle": form_hoja_detalle,
                 "materiales_no_en_hoja": materiales_no_en_hoja,
                 "lote": lote,
+                "lote_nav_active": "materiales",
+                "categorias_by_tipo": _categorias_por_tipo(company),
             },
         )
 
@@ -140,6 +179,7 @@ def material_list(request):
             "hoja_seleccionada": hoja_seleccionada,
             "modo_hoja": modo_hoja,
             "lote": None,
+            "categorias_by_tipo": _categorias_por_tipo(company),
         },
     )
 
@@ -168,6 +208,7 @@ def material_edit(request, pk):
             "form_new": form_new,
             "form_edit": form_edit,
             "editing": material,
+            "categorias_by_tipo": _categorias_por_tipo(company),
         },
     )
 
@@ -386,18 +427,35 @@ def mano_de_obra_list(request):
                     instance=editing_hoja
                 )
 
-        form_new = ManoDeObraForm(request=request)
+        # Nuevo puesto desde la hoja: crear en catálogo y agregar a esta hoja
+        if request.method == "POST" and not agregar:
+            form_new = ManoDeObraForm(request.POST, request=request)
+            if form_new.is_valid():
+                obj = form_new.save(commit=False)
+                obj.company = company
+                obj.save()
+                HojaPrecioManoDeObra.objects.create(
+                    hoja=hoja_seleccionada,
+                    mano_de_obra=obj,
+                    cantidad_por_unidad_venta=obj.cantidad_por_unidad_venta,
+                    precio_unidad_venta=obj.precio_unidad_venta,
+                )
+                return redirect(f"{reverse('recursos:mano_de_obra_list')}?hoja={hoja_id}")
+        else:
+            form_new = ManoDeObraForm(request=request)
+
         items_no_en_hoja = None
         if agregar:
-            ids_en_hoja = hoja_seleccionada.detalles.values_list(
-                "mano_de_obra_id", flat=True
+            ids_en_hoja = set(
+                hoja_seleccionada.detalles.values_list("mano_de_obra_id", flat=True)
             )
-            items_no_en_hoja = ManoDeObra.objects.filter(
-                company=company
-            ).exclude(
-                pk__in=ids_en_hoja
-            ).select_related(
-                "rubro", "subrubro", "equipo", "ref_equipo", "unidad_de_venta"
+            todos = list(
+                ManoDeObra.objects.filter(company=company).select_related(
+                    "rubro", "subrubro", "equipo", "ref_equipo", "unidad_de_venta"
+                )
+            )
+            items_no_en_hoja = (
+                [m for m in todos if m.pk not in ids_en_hoja] if ids_en_hoja else todos
             )
 
         lote = Lote.objects.filter(hoja_mano_de_obra=hoja_seleccionada).first()
@@ -414,6 +472,7 @@ def mano_de_obra_list(request):
                 "form_hoja_detalle": form_hoja_detalle,
                 "items_no_en_hoja": items_no_en_hoja,
                 "lote": lote,
+                "lote_nav_active": "mano_obra",
             },
         )
 
@@ -682,6 +741,7 @@ def mezcla_list(request):
             "hojas": hojas,
             "hoja_seleccionada": hoja_seleccionada,
             "lote": lote,
+            "lote_nav_active": "mezclas" if lote else None,
         },
     )
 
@@ -1005,10 +1065,22 @@ def lote_detalle(request, pk):
 
     if request.method == "POST" and request.POST.get("form") == "dolar":
         tipo_id = request.POST.get("tipo_dolar") or None
-        fecha_str = request.POST.get("fecha_dolar") or None
-        lote.tipo_dolar_id = int(tipo_id) if tipo_id else None
-        lote.fecha_dolar = datetime.strptime(fecha_str, "%Y-%m-%d").date() if fecha_str else None
-        lote.save()
+        fecha_str = (request.POST.get("fecha_dolar") or "").strip() or None
+        try:
+            if tipo_id:
+                tipo_pk = int(tipo_id)
+                if tipos_dolar.filter(pk=tipo_pk).exists():
+                    lote.tipo_dolar_id = tipo_pk
+                # si no existe en la empresa, no se cambia
+            else:
+                lote.tipo_dolar_id = None
+            if fecha_str:
+                lote.fecha_dolar = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+            else:
+                lote.fecha_dolar = None
+            lote.save()
+        except (ValueError, TypeError):
+            pass
         return redirect("recursos:lote_detalle", pk=lote.pk)
 
     return render(
@@ -1027,7 +1099,7 @@ def tarea_list(request, lote_pk):
     return render(
         request,
         "recursos/tarea_list.html",
-        {"lote": lote, "tareas": tareas},
+        {"lote": lote, "tareas": tareas, "lote_nav_active": "maestro_tareas"},
     )
 
 
@@ -1046,7 +1118,7 @@ def tarea_detalle(request, lote_pk, pk):
     return render(
         request,
         "recursos/tarea_detalle.html",
-        {"lote": lote, "tarea": tarea, "recursos": recursos, "total": total, "total_usd": total_usd},
+        {"lote": lote, "tarea": tarea, "recursos": recursos, "total": total, "total_usd": total_usd, "lote_nav_active": "maestro_tareas"},
     )
 
 
@@ -1081,7 +1153,7 @@ def tarea_create(request, lote_pk):
     return render(
         request,
         "recursos/tarea_form.html",
-        {"form": form, "lote": lote, "editing": False, "subrubros_by_rubro": subrubros_by_rubro},
+        {"form": form, "lote": lote, "editing": False, "subrubros_by_rubro": subrubros_by_rubro, "lote_nav_active": "maestro_tareas"},
     )
 
 
@@ -1101,7 +1173,7 @@ def tarea_edit(request, lote_pk, pk):
     return render(
         request,
         "recursos/tarea_form.html",
-        {"form": form, "lote": lote, "tarea": tarea, "editing": True, "subrubros_by_rubro": subrubros_by_rubro},
+        {"form": form, "lote": lote, "tarea": tarea, "editing": True, "subrubros_by_rubro": subrubros_by_rubro, "lote_nav_active": "maestro_tareas"},
     )
 
 
@@ -1115,7 +1187,11 @@ def tarea_delete(request, lote_pk, pk):
     return render(
         request,
         "general/confirm_delete.html",
-        {"object": tarea, "cancel_url": reverse("recursos:tarea_list", args=[lote.pk])},
+        {
+            "object": tarea,
+            "cancel_url": "recursos:tarea_list",
+            "cancel_link": reverse("recursos:tarea_list", kwargs={"lote_pk": lote.pk}),
+        },
     )
 
 
@@ -1143,7 +1219,7 @@ def tarea_recurso_add(request, lote_pk, tarea_pk):
     return render(
         request,
         "recursos/tarea_recurso_form.html",
-        {"form": form, "lote": lote, "tarea": tarea},
+        {"form": form, "lote": lote, "tarea": tarea, "lote_nav_active": "maestro_tareas"},
     )
 
 
@@ -1221,18 +1297,36 @@ def subcontrato_list(request):
                     instance=editing_hoja
                 )
 
-        form_new = SubcontratoForm(request=request)
+        # Nuevo subcontrato desde la hoja: crear en catálogo y agregar a esta hoja
+        if request.method == "POST" and not agregar:
+            form_new = SubcontratoForm(request.POST, request=request)
+            if form_new.is_valid():
+                obj = form_new.save(commit=False)
+                obj.company = company
+                obj.save()
+                HojaPrecioSubcontrato.objects.create(
+                    hoja=hoja_seleccionada,
+                    subcontrato=obj,
+                    cantidad_por_unidad_venta=obj.cantidad_por_unidad_venta,
+                    precio_unidad_venta=obj.precio_unidad_venta,
+                    moneda=obj.moneda,
+                )
+                return redirect(f"{reverse('recursos:subcontrato_list')}?hoja={hoja_id}")
+        else:
+            form_new = SubcontratoForm(request=request)
+
         subcontratos_no_en_hoja = None
         if agregar:
-            ids_en_hoja = hoja_seleccionada.detalles.values_list(
-                "subcontrato_id", flat=True
+            ids_en_hoja = set(
+                hoja_seleccionada.detalles.values_list("subcontrato_id", flat=True)
             )
-            subcontratos_no_en_hoja = Subcontrato.objects.filter(
-                company=company
-            ).exclude(
-                pk__in=ids_en_hoja
-            ).select_related(
-                "rubro", "subrubro", "proveedor", "unidad_de_venta"
+            todos = list(
+                Subcontrato.objects.filter(company=company).select_related(
+                    "rubro", "subrubro", "proveedor", "unidad_de_venta"
+                )
+            )
+            subcontratos_no_en_hoja = (
+                [s for s in todos if s.pk not in ids_en_hoja] if ids_en_hoja else todos
             )
 
         lote = Lote.objects.filter(hoja_subcontratos=hoja_seleccionada).first()
@@ -1249,6 +1343,7 @@ def subcontrato_list(request):
                 "form_hoja_detalle": form_hoja_detalle,
                 "subcontratos_no_en_hoja": subcontratos_no_en_hoja,
                 "lote": lote,
+                "lote_nav_active": "subcontratos",
             },
         )
 

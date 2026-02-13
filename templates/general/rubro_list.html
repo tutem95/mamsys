@@ -2,65 +2,48 @@
 {% block title %}Rubros · Presupuesto{% endblock %}
 
 {% block content %}
-<main class="shell">
+<div class="shell">
     <header>
         <div>
             <h1>Rubros</h1>
             <p>Alta y mantenimiento de las grandes categorías de costo.</p>
         </div>
-        <div>
-            <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <a class="btn btn-primary" href="{% url 'general:rubro_add' %}">+ Agregar rubro</a>
+            <a class="link link-back" href="{% url 'general:indice' %}">← Volver al índice</a>
         </div>
     </header>
 
-    <section class="layout">
-        <section class="card">
-            <h2>Nuevo rubro</h2>
-            <form method="post">
-                {% csrf_token %}
-                <label for="{{ form.nombre.id_for_label }}">Nombre</label>
-                {{ form.nombre }}
-                <div style="margin-top:12px;"><button type="submit" class="btn btn-primary">Guardar</button></div>
-            </form>
-        </section>
-
-        <section class="card">
-            <h2>Listado</h2>
-            {% if rubros %}
-                <table>
-                    <thead>
+    <section class="card">
+        {% if rubros %}
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for rubro in rubros %}
                     <tr>
-                        <th>#</th>
-                        <th>Nombre</th>
-                        <th></th>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ rubro.nombre }}</td>
+                        <td class="actions">
+                            <a href="{% url 'general:rubro_edit' rubro.pk %}" class="btn-link">Editar</a>
+                            |
+                            <form action="{% url 'general:rubro_delete' rubro.pk %}" method="post" style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este rubro?');">Eliminar</button>
+                            </form>
+                        </td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for rubro in rubros %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ rubro.nombre }}</td>
-                            <td class="actions">
-                                <a href="{% url 'general:rubro_edit' rubro.pk %}" class="btn-link">Editar</a>
-                                |
-                                <form action="{% url 'general:rubro_delete' rubro.pk %}" method="post" style="display:inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este rubro?');">Eliminar</button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p style="font-size:0.9rem; color:var(--text-muted);">Todavía no hay rubros cargados.</p>
-            {% endif %}
-        </section>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="font-size:0.9rem; color:var(--text-muted);">Todavía no hay rubros cargados.</p>
+        {% endif %}
     </section>
-
-    <footer>
-        <span>Solo usuarios autenticados pueden modificar rubros.</span>
-        <a class="link" href="{% url 'usuarios:logout' %}">Cerrar sesión</a>
-    </footer>
-</main>
+</div>
 {% endblock %}

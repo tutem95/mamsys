@@ -300,10 +300,16 @@ a:hover, .link:hover {
 .btn-primary {
     background: linear-gradient(135deg, var(--accent-soft), var(--accent));
     color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .btn-primary:hover {
     filter: brightness(1.05);
+    text-decoration: none;
+    color: white;
 }
 
 .btn-link {
@@ -683,6 +689,63 @@ tbody tr:hover {
 
 .lote-seccion-maestro .lote-seccion-desc {
     color: rgba(255, 255, 255, 0.85);
+}
+
+/* Pestañas tipo archivos: Maestro Tareas | Materiales | Mano de obra | Subcontratos | Mezclas (dentro de un lote) */
+.lote-nav-tabs {
+    display: flex;
+    gap: 0;
+    margin: 0 0 16px;
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.lote-tab {
+    padding: 10px 18px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-decoration: none;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: -1px;
+    background: #f1f5f9;
+    transition: color 0.2s, background 0.2s;
+}
+
+.lote-tab:hover {
+    color: var(--accent);
+    background: #e2e8f0;
+    text-decoration: none;
+}
+
+.lote-tab.active {
+    color: var(--title);
+    background: var(--bg-card);
+    border-color: var(--border);
+    border-bottom-color: var(--bg-card);
+}
+
+/* Maestro Tareas: azul marino (igual que lote-seccion-maestro) */
+.lote-tab-maestro {
+    background: #1e3a5f;
+    color: rgba(255, 255, 255, 0.9);
+    border-color: #1e3a5f;
+}
+
+.lote-tab-maestro:hover {
+    background: #152a47;
+    border-color: #152a47;
+    color: white;
+    text-decoration: none;
+}
+
+.lote-tab-maestro.active {
+    background: #1e3a5f;
+    color: white;
+    border-color: #1e3a5f;
+    border-bottom-color: #1e3a5f;
 }
 
 /* Formularios */

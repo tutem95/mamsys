@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from general.models import (
     CategoriaMaterial,
@@ -78,6 +79,13 @@ def presupuesto(request):
 @login_required
 def rubro_list(request):
     company = request.company
+    rubros = Rubro.objects.filter(company=company)
+    return render(request, "general/rubro_list.html", {"rubros": rubros})
+
+
+@login_required
+def rubro_add(request):
+    company = request.company
     if request.method == "POST":
         form = RubroForm(request.POST, request=request)
         if form.is_valid():
@@ -87,9 +95,11 @@ def rubro_list(request):
             return redirect("general:rubro_list")
     else:
         form = RubroForm(request=request)
-
-    rubros = Rubro.objects.filter(company=company)
-    return render(request, "general/rubro_list.html", {"rubros": rubros, "form": form})
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nuevo rubro",
+        "cancel_url": reverse("general:rubro_list"),
+    })
 
 
 @login_required
@@ -103,13 +113,11 @@ def rubro_edit(request, pk):
             return redirect("general:rubro_list")
     else:
         form = RubroForm(instance=rubro, request=request)
-
-    rubros = Rubro.objects.filter(company=company)
-    return render(
-        request,
-        "general/rubro_list.html",
-        {"rubros": rubros, "form": form, "editing": rubro},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar rubro",
+        "cancel_url": reverse("general:rubro_list"),
+    })
 
 
 @login_required
@@ -128,6 +136,13 @@ def rubro_delete(request, pk):
 @login_required
 def unidad_list(request):
     company = request.company
+    unidades = Unidad.objects.filter(company=company)
+    return render(request, "general/unidad_list.html", {"unidades": unidades})
+
+
+@login_required
+def unidad_add(request):
+    company = request.company
     if request.method == "POST":
         form = UnidadForm(request.POST, request=request)
         if form.is_valid():
@@ -137,13 +152,11 @@ def unidad_list(request):
             return redirect("general:unidad_list")
     else:
         form = UnidadForm(request=request)
-
-    unidades = Unidad.objects.filter(company=company)
-    return render(
-        request,
-        "general/unidad_list.html",
-        {"unidades": unidades, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nueva unidad",
+        "cancel_url": reverse("general:unidad_list"),
+    })
 
 
 @login_required
@@ -157,13 +170,11 @@ def unidad_edit(request, pk):
             return redirect("general:unidad_list")
     else:
         form = UnidadForm(instance=unidad, request=request)
-
-    unidades = Unidad.objects.filter(company=company)
-    return render(
-        request,
-        "general/unidad_list.html",
-        {"unidades": unidades, "form": form, "editing": unidad},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar unidad",
+        "cancel_url": reverse("general:unidad_list"),
+    })
 
 
 @login_required
@@ -182,6 +193,13 @@ def unidad_delete(request, pk):
 @login_required
 def equipo_list(request):
     company = request.company
+    equipos = Equipo.objects.filter(company=company)
+    return render(request, "general/equipo_list.html", {"equipos": equipos})
+
+
+@login_required
+def equipo_add(request):
+    company = request.company
     if request.method == "POST":
         form = EquipoForm(request.POST, request=request)
         if form.is_valid():
@@ -191,13 +209,11 @@ def equipo_list(request):
             return redirect("general:equipo_list")
     else:
         form = EquipoForm(request=request)
-
-    equipos = Equipo.objects.filter(company=company)
-    return render(
-        request,
-        "general/equipo_list.html",
-        {"equipos": equipos, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nuevo equipo",
+        "cancel_url": reverse("general:equipo_list"),
+    })
 
 
 @login_required
@@ -211,13 +227,11 @@ def equipo_edit(request, pk):
             return redirect("general:equipo_list")
     else:
         form = EquipoForm(instance=equipo, request=request)
-
-    equipos = Equipo.objects.filter(company=company)
-    return render(
-        request,
-        "general/equipo_list.html",
-        {"equipos": equipos, "form": form, "editing": equipo},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar equipo",
+        "cancel_url": reverse("general:equipo_list"),
+    })
 
 
 @login_required
@@ -236,6 +250,13 @@ def equipo_delete(request, pk):
 @login_required
 def tipo_material_list(request):
     company = request.company
+    tipos = TipoMaterial.objects.filter(company=company)
+    return render(request, "general/tipo_material_list.html", {"tipos": tipos})
+
+
+@login_required
+def tipo_material_add(request):
+    company = request.company
     if request.method == "POST":
         form = TipoMaterialForm(request.POST, request=request)
         if form.is_valid():
@@ -245,13 +266,11 @@ def tipo_material_list(request):
             return redirect("general:tipo_material_list")
     else:
         form = TipoMaterialForm(request=request)
-
-    tipos = TipoMaterial.objects.filter(company=company)
-    return render(
-        request,
-        "general/tipo_material_list.html",
-        {"tipos": tipos, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nuevo tipo de material",
+        "cancel_url": reverse("general:tipo_material_list"),
+    })
 
 
 @login_required
@@ -265,13 +284,11 @@ def tipo_material_edit(request, pk):
             return redirect("general:tipo_material_list")
     else:
         form = TipoMaterialForm(instance=tipo, request=request)
-
-    tipos = TipoMaterial.objects.filter(company=company)
-    return render(
-        request,
-        "general/tipo_material_list.html",
-        {"tipos": tipos, "form": form, "editing": tipo},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar tipo de material",
+        "cancel_url": reverse("general:tipo_material_list"),
+    })
 
 
 @login_required
@@ -290,6 +307,13 @@ def tipo_material_delete(request, pk):
 @login_required
 def categoria_material_list(request):
     company = request.company
+    categorias = CategoriaMaterial.objects.filter(company=company).select_related("tipo")
+    return render(request, "general/categoria_material_list.html", {"categorias": categorias})
+
+
+@login_required
+def categoria_material_add(request):
+    company = request.company
     if request.method == "POST":
         form = CategoriaMaterialForm(request.POST, request=request)
         if form.is_valid():
@@ -299,13 +323,11 @@ def categoria_material_list(request):
             return redirect("general:categoria_material_list")
     else:
         form = CategoriaMaterialForm(request=request)
-
-    categorias = CategoriaMaterial.objects.filter(company=company).select_related("tipo")
-    return render(
-        request,
-        "general/categoria_material_list.html",
-        {"categorias": categorias, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nueva categoría de material",
+        "cancel_url": reverse("general:categoria_material_list"),
+    })
 
 
 @login_required
@@ -319,13 +341,11 @@ def categoria_material_edit(request, pk):
             return redirect("general:categoria_material_list")
     else:
         form = CategoriaMaterialForm(instance=categoria, request=request)
-
-    categorias = CategoriaMaterial.objects.filter(company=company).select_related("tipo")
-    return render(
-        request,
-        "general/categoria_material_list.html",
-        {"categorias": categorias, "form": form, "editing": categoria},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar categoría de material",
+        "cancel_url": reverse("general:categoria_material_list"),
+    })
 
 
 @login_required
@@ -344,6 +364,13 @@ def categoria_material_delete(request, pk):
 @login_required
 def subrubro_list(request):
     company = request.company
+    subrubros = Subrubro.objects.filter(company=company).select_related("rubro")
+    return render(request, "general/subrubro_list.html", {"subrubros": subrubros})
+
+
+@login_required
+def subrubro_add(request):
+    company = request.company
     if request.method == "POST":
         form = SubrubroForm(request.POST, request=request)
         if form.is_valid():
@@ -353,13 +380,11 @@ def subrubro_list(request):
             return redirect("general:subrubro_list")
     else:
         form = SubrubroForm(request=request)
-
-    subrubros = Subrubro.objects.filter(company=company).select_related("rubro")
-    return render(
-        request,
-        "general/subrubro_list.html",
-        {"subrubros": subrubros, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nuevo subrubro",
+        "cancel_url": reverse("general:subrubro_list"),
+    })
 
 
 @login_required
@@ -373,13 +398,11 @@ def subrubro_edit(request, pk):
             return redirect("general:subrubro_list")
     else:
         form = SubrubroForm(instance=subrubro, request=request)
-
-    subrubros = Subrubro.objects.filter(company=company).select_related("rubro")
-    return render(
-        request,
-        "general/subrubro_list.html",
-        {"subrubros": subrubros, "form": form, "editing": subrubro},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar subrubro",
+        "cancel_url": reverse("general:subrubro_list"),
+    })
 
 
 @login_required
@@ -398,6 +421,13 @@ def subrubro_delete(request, pk):
 @login_required
 def ref_equipo_list(request):
     company = request.company
+    ref_equipos = RefEquipo.objects.filter(company=company).select_related("equipo")
+    return render(request, "general/ref_equipo_list.html", {"ref_equipos": ref_equipos})
+
+
+@login_required
+def ref_equipo_add(request):
+    company = request.company
     if request.method == "POST":
         form = RefEquipoForm(request.POST, request=request)
         if form.is_valid():
@@ -407,13 +437,11 @@ def ref_equipo_list(request):
             return redirect("general:ref_equipo_list")
     else:
         form = RefEquipoForm(request=request)
-
-    ref_equipos = RefEquipo.objects.filter(company=company).select_related("equipo")
-    return render(
-        request,
-        "general/ref_equipo_list.html",
-        {"ref_equipos": ref_equipos, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nuevo ref. equipo",
+        "cancel_url": reverse("general:ref_equipo_list"),
+    })
 
 
 @login_required
@@ -427,13 +455,11 @@ def ref_equipo_edit(request, pk):
             return redirect("general:ref_equipo_list")
     else:
         form = RefEquipoForm(instance=ref_equipo, request=request)
-
-    ref_equipos = RefEquipo.objects.filter(company=company).select_related("equipo")
-    return render(
-        request,
-        "general/ref_equipo_list.html",
-        {"ref_equipos": ref_equipos, "form": form, "editing": ref_equipo},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar ref. equipo",
+        "cancel_url": reverse("general:ref_equipo_list"),
+    })
 
 
 @login_required
@@ -452,6 +478,13 @@ def ref_equipo_delete(request, pk):
 @login_required
 def proveedor_list(request):
     company = request.company
+    proveedores = Proveedor.objects.filter(company=company)
+    return render(request, "general/proveedor_list.html", {"proveedores": proveedores})
+
+
+@login_required
+def proveedor_add(request):
+    company = request.company
     if request.method == "POST":
         form = ProveedorForm(request.POST, request=request)
         if form.is_valid():
@@ -461,13 +494,11 @@ def proveedor_list(request):
             return redirect("general:proveedor_list")
     else:
         form = ProveedorForm(request=request)
-
-    proveedores = Proveedor.objects.filter(company=company)
-    return render(
-        request,
-        "general/proveedor_list.html",
-        {"proveedores": proveedores, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nuevo proveedor",
+        "cancel_url": reverse("general:proveedor_list"),
+    })
 
 
 @login_required
@@ -481,13 +512,11 @@ def proveedor_edit(request, pk):
             return redirect("general:proveedor_list")
     else:
         form = ProveedorForm(instance=proveedor, request=request)
-
-    proveedores = Proveedor.objects.filter(company=company)
-    return render(
-        request,
-        "general/proveedor_list.html",
-        {"proveedores": proveedores, "form": form, "editing": proveedor},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar proveedor",
+        "cancel_url": reverse("general:proveedor_list"),
+    })
 
 
 @login_required
@@ -506,6 +535,13 @@ def proveedor_delete(request, pk):
 @login_required
 def obra_list(request):
     company = request.company
+    obras = Obra.objects.filter(company=company)
+    return render(request, "general/obra_list.html", {"obras": obras})
+
+
+@login_required
+def obra_add(request):
+    company = request.company
     if request.method == "POST":
         form = ObraForm(request.POST, request=request)
         if form.is_valid():
@@ -515,13 +551,11 @@ def obra_list(request):
             return redirect("general:obra_list")
     else:
         form = ObraForm(request=request)
-
-    obras = Obra.objects.filter(company=company)
-    return render(
-        request,
-        "general/obra_list.html",
-        {"obras": obras, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nueva obra",
+        "cancel_url": reverse("general:obra_list"),
+    })
 
 
 @login_required
@@ -535,13 +569,11 @@ def obra_edit(request, pk):
             return redirect("general:obra_list")
     else:
         form = ObraForm(instance=obra, request=request)
-
-    obras = Obra.objects.filter(company=company)
-    return render(
-        request,
-        "general/obra_list.html",
-        {"obras": obras, "form": form, "editing": obra},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar obra",
+        "cancel_url": reverse("general:obra_list"),
+    })
 
 
 @login_required
@@ -560,6 +592,13 @@ def obra_delete(request, pk):
 @login_required
 def tipo_dolar_list(request):
     company = request.company
+    tipos = TipoDolar.objects.filter(company=company)
+    return render(request, "general/tipo_dolar_list.html", {"tipos": tipos})
+
+
+@login_required
+def tipo_dolar_add(request):
+    company = request.company
     if request.method == "POST":
         form = TipoDolarForm(request.POST, request=request)
         if form.is_valid():
@@ -569,13 +608,11 @@ def tipo_dolar_list(request):
             return redirect("general:tipo_dolar_list")
     else:
         form = TipoDolarForm(request=request)
-
-    tipos = TipoDolar.objects.filter(company=company)
-    return render(
-        request,
-        "general/tipo_dolar_list.html",
-        {"tipos": tipos, "form": form},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Nuevo tipo de dólar",
+        "cancel_url": reverse("general:tipo_dolar_list"),
+    })
 
 
 @login_required
@@ -589,13 +626,11 @@ def tipo_dolar_edit(request, pk):
             return redirect("general:tipo_dolar_list")
     else:
         form = TipoDolarForm(instance=tipo, request=request)
-
-    tipos = TipoDolar.objects.filter(company=company)
-    return render(
-        request,
-        "general/tipo_dolar_list.html",
-        {"tipos": tipos, "form": form, "editing": tipo},
-    )
+    return render(request, "general/catalog_form.html", {
+        "form": form,
+        "page_title": "Editar tipo de dólar",
+        "cancel_url": reverse("general:tipo_dolar_list"),
+    })
 
 
 @login_required

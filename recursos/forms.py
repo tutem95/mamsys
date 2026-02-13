@@ -76,9 +76,14 @@ class MaterialForm(forms.ModelForm):
             self.fields["tipo"].queryset = TipoMaterial.objects.filter(
                 company=request.company
             )
-            self.fields["categoria"].queryset = CategoriaMaterial.objects.filter(
-                company=request.company
-            )
+            # Categoría: al editar se filtra por el tipo del material; al crear se llena por JS según tipo elegido
+            instance = kwargs.get("instance")
+            if instance and instance.tipo_id:
+                self.fields["categoria"].queryset = CategoriaMaterial.objects.filter(
+                    company=request.company, tipo=instance.tipo
+                ).order_by("nombre")
+            else:
+                self.fields["categoria"].queryset = CategoriaMaterial.objects.none()
             self.fields["unidad_de_venta"].queryset = Unidad.objects.filter(
                 company=request.company
             )

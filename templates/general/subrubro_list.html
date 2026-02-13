@@ -2,59 +2,50 @@
 {% block title %}Subrubros · Presupuesto{% endblock %}
 
 {% block content %}
-<main class="shell">
+<div class="shell">
     <header>
         <div>
             <h1>Subrubros</h1>
             <p>Desglose de rubros en categorías más específicas.</p>
         </div>
-        <a class="link link-back" href="{% url 'general:dashboard' %}">← Volver al panel</a>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <a class="btn btn-primary" href="{% url 'general:subrubro_add' %}">+ Agregar subrubro</a>
+            <a class="link link-back" href="{% url 'general:indice' %}">← Volver al índice</a>
+        </div>
     </header>
 
-    <section class="layout">
-        <section class="card">
-            <h2>{% if editing %}Editar subrubro{% else %}Nuevo subrubro{% endif %}</h2>
-            <form method="post">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <button type="submit" class="btn btn-primary">Guardar</button>
-            </form>
-        </section>
-
-        <section class="card">
-            <h2>Listado</h2>
-            {% if subrubros %}
-                <table>
-                    <thead>
+    <section class="card">
+        {% if subrubros %}
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Rubro</th>
+                    <th>Nombre</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for subrubro in subrubros %}
                     <tr>
-                        <th>#</th>
-                        <th>Rubro</th>
-                        <th>Nombre</th>
-                        <th></th>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ subrubro.rubro.nombre }}</td>
+                        <td>{{ subrubro.nombre }}</td>
+                        <td class="actions">
+                            <a href="{% url 'general:subrubro_edit' subrubro.pk %}" class="btn-link">Editar</a>
+                            |
+                            <form action="{% url 'general:subrubro_delete' subrubro.pk %}" method="post" style="display:inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este subrubro?');">Eliminar</button>
+                            </form>
+                        </td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for subrubro in subrubros %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ subrubro.rubro.nombre }}</td>
-                            <td>{{ subrubro.nombre }}</td>
-                            <td class="actions">
-                                <a href="{% url 'general:subrubro_edit' subrubro.pk %}" class="btn-link">Editar</a>
-                                |
-                                <form action="{% url 'general:subrubro_delete' subrubro.pk %}" method="post" style="display:inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-link btn-danger" onclick="return confirm('¿Eliminar este subrubro?');">Eliminar</button>
-                                </form>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p style="font-size:0.9rem; color:var(--text-muted);">No hay subrubros cargados.</p>
-            {% endif %}
-        </section>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p style="font-size:0.9rem; color:var(--text-muted);">No hay subrubros cargados.</p>
+        {% endif %}
     </section>
-</main>
+</div>
 {% endblock %}

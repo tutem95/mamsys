@@ -11,18 +11,22 @@ urlpatterns = [
     path("presupuesto/", views.presupuesto, name="presupuesto"),
     # Obras
     path("obras/", views.obra_list, name="obra_list"),
+    path("obras/agregar/", views.obra_add, name="obra_add"),
     path("obras/<int:pk>/editar/", views.obra_edit, name="obra_edit"),
     path("obras/<int:pk>/eliminar/", views.obra_delete, name="obra_delete"),
     # Rubros
     path("rubros/", views.rubro_list, name="rubro_list"),
+    path("rubros/agregar/", views.rubro_add, name="rubro_add"),
     path("rubros/<int:pk>/editar/", views.rubro_edit, name="rubro_edit"),
     path("rubros/<int:pk>/eliminar/", views.rubro_delete, name="rubro_delete"),
     # Unidades
     path("unidades/", views.unidad_list, name="unidad_list"),
+    path("unidades/agregar/", views.unidad_add, name="unidad_add"),
     path("unidades/<int:pk>/editar/", views.unidad_edit, name="unidad_edit"),
     path("unidades/<int:pk>/eliminar/", views.unidad_delete, name="unidad_delete"),
     # Tipos de material
     path("tipos-material/", views.tipo_material_list, name="tipo_material_list"),
+    path("tipos-material/agregar/", views.tipo_material_add, name="tipo_material_add"),
     path(
         "tipos-material/<int:pk>/editar/",
         views.tipo_material_edit,
@@ -35,6 +39,7 @@ urlpatterns = [
     ),
     # Equipos
     path("equipos/", views.equipo_list, name="equipo_list"),
+    path("equipos/agregar/", views.equipo_add, name="equipo_add"),
     path("equipos/<int:pk>/editar/", views.equipo_edit, name="equipo_edit"),
     path("equipos/<int:pk>/eliminar/", views.equipo_delete, name="equipo_delete"),
     # Categorías de material
@@ -42,6 +47,11 @@ urlpatterns = [
         "categorias-material/",
         views.categoria_material_list,
         name="categoria_material_list",
+    ),
+    path(
+        "categorias-material/agregar/",
+        views.categoria_material_add,
+        name="categoria_material_add",
     ),
     path(
         "categorias-material/<int:pk>/editar/",
@@ -55,6 +65,7 @@ urlpatterns = [
     ),
     # Ref. Equipos (subcategoría de Equipo)
     path("ref-equipos/", views.ref_equipo_list, name="ref_equipo_list"),
+    path("ref-equipos/agregar/", views.ref_equipo_add, name="ref_equipo_add"),
     path(
         "ref-equipos/<int:pk>/editar/",
         views.ref_equipo_edit,
@@ -67,6 +78,7 @@ urlpatterns = [
     ),
     # Subrubros
     path("subrubros/", views.subrubro_list, name="subrubro_list"),
+    path("subrubros/agregar/", views.subrubro_add, name="subrubro_add"),
     path(
         "subrubros/<int:pk>/editar/",
         views.subrubro_edit,
@@ -79,6 +91,7 @@ urlpatterns = [
     ),
     # Proveedores
     path("proveedores/", views.proveedor_list, name="proveedor_list"),
+    path("proveedores/agregar/", views.proveedor_add, name="proveedor_add"),
     path(
         "proveedores/<int:pk>/editar/",
         views.proveedor_edit,
@@ -91,6 +104,7 @@ urlpatterns = [
     ),
     # Tipos de dólar
     path("tipos-dolar/", views.tipo_dolar_list, name="tipo_dolar_list"),
+    path("tipos-dolar/agregar/", views.tipo_dolar_add, name="tipo_dolar_add"),
     path("tipos-dolar/<int:pk>/editar/", views.tipo_dolar_edit, name="tipo_dolar_edit"),
     path("tipos-dolar/<int:pk>/eliminar/", views.tipo_dolar_delete, name="tipo_dolar_delete"),
     # Tabla de dólar

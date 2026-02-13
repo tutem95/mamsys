@@ -1,4 +1,5 @@
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -65,17 +66,15 @@ def company_select(request):
     )
 
 
+@login_required
 def no_company(request):
     """El usuario no pertenece a ninguna empresa."""
-    if not request.user.is_authenticated:
-        return redirect("usuarios:login")
     return render(request, "usuarios/no_company.html")
 
 
+@login_required
 def no_section_access(request):
     """El usuario no tiene acceso a esta sección."""
-    if not request.user.is_authenticated:
-        return redirect("usuarios:login")
     if not request.company:
         return redirect("usuarios:company_select")
     return render(request, "usuarios/no_section_access.html")
