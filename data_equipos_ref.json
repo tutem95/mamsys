@@ -1,0 +1,18 @@
+{
+  "company": "Nocito",
+  "equipos": [
+    { "nombre": "Naty" },
+    { "nombre": "Diego" }
+  ],
+  "ref_equipos": [
+    { "equipo": "Naty", "nombre": "Ramón" },
+    { "equipo": "Naty", "nombre": "Gabriel" },
+    { "equipo": "Naty", "nombre": "Benedicto / Gilberto" },
+    { "equipo": "Naty", "nombre": "Wilber" },
+    { "equipo": "Diego", "nombre": "Maximiliano" },
+    { "equipo": "Diego", "nombre": "Darío" },
+    { "equipo": "Diego", "nombre": "Darío / Cristian" },
+    { "equipo": "Diego", "nombre": "Darío / Elías" },
+    { "equipo": "Diego", "nombre": "Marcelo" }
+  ]
+}
